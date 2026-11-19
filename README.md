@@ -13,14 +13,18 @@ This project focuses on building a custom computer vision pipeline for real-time
 - **Model Training:** Fine-tune pre-trained Ultralytics YOLO models on custom annotated datasets.
 - **Inference & Evaluation:** Benchmark precision, recall, and mAP (mean Average Precision) for real-time detection on CPU/GPU.
 - **AI Foundations Practice:** Build core machine learning and generative AI competencies, including regression modeling, local LLM deployment with Ollama, and full coursework progression.
-- **Interactive Web Application:** Deploy a full-stack web application (FastAPI + HTML5/CSS/JS) supporting photo upload, webcam capture, confidence thresholding, and visual side-by-side detection bounding boxes.
+- **Interactive Web Application & Cloud Deployment:** Deploy a full-stack web application (FastAPI + HTML5/CSS/JS) supporting photo upload, webcam capture, confidence thresholding, and visual side-by-side detection bounding boxes, hostable locally or deployed serverless on **Vercel** connected to Ultralytics Cloud Run inference.
 
 ## 📁 Repository Structure
 ```
 ai-object-detection-ultralytics/
+├── api/                                 # Vercel Serverless Function proxy
+│   ├── index.py                         # Serverless FastAPI app (lightweight, connects to Cloud Run)
+│   └── requirements.txt                 # Vercel dependencies (FastAPI, PIL, HTTPX - no heavy torch)
+├── vercel.json                          # Vercel deployment routing and rewrites
 ├── webapp/                              # Full-stack object detection web application
 │   ├── main.py                          # FastAPI backend with /predict and /health
-│   ├── requirements.txt                 # Backend dependencies
+│   ├── requirements.txt                 # Backend dependencies (with Ultralytics & PyTorch)
 │   ├── .env.example                     # Environment configuration template
 │   ├── README.md                        # Web application user guide
 │   ├── model/
@@ -42,9 +46,27 @@ ai-object-detection-ultralytics/
 └── README.md                            # Project overview and documentation
 ```
 
-## 🚀 Running the Web Application
+---
 
-To run the interactive object detection web application:
+## 🌐 Deploy to Vercel (Online Cloud Hosting)
+
+This project is fully configured for zero-configuration deployment on **Vercel**:
+
+1. Go to [vercel.com/new](https://vercel.com/new) and log in with your GitHub account.
+2. Under "Import Git Repository", find **`ai-object-detection-ultralytics`** and click **Import**.
+3. Leave all default project settings as they are:
+   - **Framework Preset:** *Other*
+   - **Root Directory:** `./`
+4. Click **Deploy**.
+5. In ~30 seconds, your web application will be live at a public URL (e.g. `https://ai-object-detection-ultralytics.vercel.app`)!
+
+> **How it works:** Vercel serves the responsive frontend and routes `/predict` and `/health` to `api/index.py`, which forwards requests to your dedicated Ultralytics Cloud Run inference endpoint and renders color-coded detection boxes using PIL.
+
+---
+
+## 🚀 Running the Web Application Locally
+
+To run the interactive object detection web application locally:
 
 1. Navigate into the `webapp` folder:
    ```bash

@@ -143,6 +143,18 @@ The FastAPI backend exposes the following endpoints:
 
 ---
 
+## 🌐 Deploy Online on Vercel
+
+You can host this application completely free on **Vercel** without running any servers locally:
+
+1. Push this repository to your GitHub account (`ai-object-detection-ultralytics`).
+2. Log in at [vercel.com](https://vercel.com) and click **"Add New Project"**.
+3. Import your `ai-object-detection-ultralytics` repository.
+4. Keep the default settings (Framework: *Other*, Root Directory: `./`) and click **Deploy**.
+5. Once deployed, open your live Vercel URL to upload photos or use your webcam directly from your smartphone or laptop!
+
+---
+
 ## 🧪 How to Test
 
 ### Automated curl Test

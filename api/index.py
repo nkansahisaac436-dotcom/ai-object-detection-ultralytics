@@ -8,17 +8,17 @@ from typing import Optional, Dict, Any, List
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from PIL import Image
-import httpx
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse
+from PIL import Image, ImageDraw
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("vercel_api")
 
 app = FastAPI(
-    title="AI Object Detection - Vercel Serverless API",
-    description="Vercel Serverless Function proxy for YOLO Object Detection & Personal Recognition",
+    title="AI Object Detection - Ultralytics YOLO",
+    description="Vercel Cloud Deployment connected to Ultralytics Cloud Inference API",
     version="1.0.0"
 )
 
@@ -31,49 +31,67 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Environment variables
-USE_HUB_API = os.getenv("USE_HUB_API", "false").lower() in ("true", "1", "yes")
-HUB_API_KEY = os.getenv("HUB_API_KEY", "")
-HUB_MODEL_URL = os.getenv("HUB_MODEL_URL", "https://api.ultralytics.com/v1/predict")
-REMOTE_BACKEND_URL = os.getenv("REMOTE_BACKEND_URL", "").rstrip("/")
+# Configuration with user's Ultralytics Cloud Run inference endpoint & API key
+DEFAULT_HUB_URL = "https://predict-6afebbe7c7fd72b1f958076d-dproatj77a-nw.a.run.app/predict"
+DEFAULT_HUB_KEY = "ul_645afcc6c6c448d7046b58259f0cb16c146db9ad"
+
+HUB_MODEL_URL = os.getenv("HUB_MODEL_URL", DEFAULT_HUB_URL)
+HUB_API_KEY = os.getenv("HUB_API_KEY", DEFAULT_HUB_KEY)
+USE_HUB_API = os.getenv("USE_HUB_API", "true").lower() in ("true", "1", "yes")
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
-# Check if local YOLO is available
-try:
-    from ultralytics import YOLO
-    LOCAL_YOLO_AVAILABLE = True
-except ImportError:
-    LOCAL_YOLO_AVAILABLE = False
+BASE_DIR = Path(__file__).resolve().parent.parent
+STATIC_DIR = BASE_DIR / "webapp" / "static"
+
+
+def draw_bounding_boxes(image_bytes: bytes, detections: List[Dict[str, Any]]) -> str:
+    """Draw bounding boxes and class labels directly onto image using PIL."""
+    try:
+        img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        draw = ImageDraw.Draw(img)
+
+        # Color palette for classes
+        colors = ["#10B981", "#4F46E5", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4"]
+
+        for idx, det in enumerate(detections):
+            bbox = det.get("bbox", [])
+            if len(bbox) != 4:
+                continue
+
+            x1, y1, x2, y2 = bbox
+            color = colors[idx % len(colors)]
+            label = f"{det.get('class_name', 'Object')} {det.get('confidence', 0)*100:.1f}%"
+
+            # Draw outer rectangle
+            draw.rectangle([x1, y1, x2, y2], outline=color, width=3)
+
+            # Draw text label banner
+            text_pos = (x1, max(0, y1 - 18))
+            text_bbox = draw.textbbox(text_pos, label)
+            draw.rectangle([text_bbox[0] - 2, text_bbox[1] - 2, text_bbox[2] + 4, text_bbox[3] + 2], fill=color)
+            draw.text(text_pos, label, fill="#FFFFFF")
+
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=90)
+        return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
+    except Exception as e:
+        logger.error(f"Error drawing annotations: {e}")
+        return "data:image/jpeg;base64," + base64.b64encode(image_bytes).decode("utf-8")
 
 
 @app.get("/health")
 @app.get("/api/health")
 def health_check() -> Dict[str, Any]:
     """Health check endpoint for Vercel deployment."""
-    is_ready = USE_HUB_API or bool(REMOTE_BACKEND_URL) or LOCAL_YOLO_AVAILABLE
-
-    message = "Vercel API is live."
-    if USE_HUB_API:
-        message = "Connected to Ultralytics HUB Cloud API."
-    elif REMOTE_BACKEND_URL:
-        message = f"Proxying inference to remote backend: {REMOTE_BACKEND_URL}"
-    elif LOCAL_YOLO_AVAILABLE:
-        message = "Local YOLO model engine available."
-    else:
-        message = (
-            "Vercel frontend is ready! To enable cloud inference on Vercel, set "
-            "USE_HUB_API=true and HUB_API_KEY in your Vercel Project Settings, "
-            "or set REMOTE_BACKEND_URL pointing to your Render/Railway backend."
-        )
-
     return {
-        "status": "healthy" if is_ready else "setup_needed",
+        "status": "healthy",
         "platform": "vercel_serverless",
-        "model_loaded": is_ready,
-        "use_hub_api": USE_HUB_API,
-        "remote_backend_configured": bool(REMOTE_BACKEND_URL),
-        "local_yolo_available": LOCAL_YOLO_AVAILABLE,
-        "message": message
+        "model_loaded": True,
+        "model_name": "IsaacImage (Ultralytics Cloud Run)",
+        "use_hub_api": True,
+        "endpoint": HUB_MODEL_URL,
+        "classes_count": 1,
+        "message": "Connected to Ultralytics Cloud Inference endpoint."
     }
 
 
@@ -83,8 +101,8 @@ async def predict(
     file: UploadFile = File(..., description="Image file (JPEG, PNG, or WebP)"),
     conf: float = Form(0.25, description="Confidence threshold between 0.05 and 0.95")
 ):
-    """Run prediction either via HUB API, remote backend, or local YOLO."""
-    # 1. Validate file
+    """Run prediction via Ultralytics Cloud Run endpoint."""
+    # 1. Validate file format
     allowed_extensions = {".jpg", ".jpeg", ".png", ".webp"}
     file_ext = Path(file.filename or "").suffix.lower()
     content_type = (file.content_type or "").lower()
@@ -95,6 +113,7 @@ async def predict(
             detail="Invalid file type. Please upload a valid image (JPEG, PNG, or WebP)."
         )
 
+    # 2. Validate file size
     contents = await file.read()
     if len(contents) > MAX_FILE_SIZE:
         raise HTTPException(
@@ -107,94 +126,87 @@ async def predict(
 
     conf_clamped = max(0.05, min(0.95, float(conf)))
 
-    # Option A: Ultralytics HUB API
-    if USE_HUB_API:
-        if not HUB_API_KEY:
+    # 3. Get image dimensions
+    try:
+        pil_img = Image.open(io.BytesIO(contents))
+        img_width, img_height = pil_img.size
+    except Exception:
+        img_width, img_height = 0, 0
+
+    # 4. Call Ultralytics Inference API
+    headers = {
+        "x-api-key": HUB_API_KEY,
+        "Authorization": f"Bearer {HUB_API_KEY}"
+    }
+    files = {"file": (file.filename or "image.jpg", contents, "image/jpeg")}
+    data = {"conf": str(conf_clamped)}
+
+    start_time = time.perf_counter()
+    async with httpx.AsyncClient(timeout=40.0) as client:
+        try:
+            resp = await client.post(HUB_MODEL_URL, headers=headers, files=files, data=data)
+            resp.raise_for_status()
+            hub_json = resp.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Ultralytics Cloud API error: {e.response.text}")
             raise HTTPException(
-                status_code=500,
-                detail="HUB_API_KEY environment variable is not configured on Vercel."
+                status_code=e.response.status_code,
+                detail=f"Ultralytics Cloud API returned error: {e.response.text}"
             )
-        headers = {"x-api-key": HUB_API_KEY}
-        files = {"file": (file.filename or "image.jpg", contents, "image/jpeg")}
-        data = {"conf": str(conf_clamped)}
+        except Exception as e:
+            logger.error(f"Connection error to Cloud Run: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Failed to communicate with Ultralytics Cloud Run: {str(e)}"
+            )
 
-        start_time = time.perf_counter()
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            try:
-                resp = await client.post(HUB_MODEL_URL, headers=headers, files=files, data=data)
-                resp.raise_for_status()
-                hub_json = resp.json()
-            except Exception as e:
-                raise HTTPException(status_code=502, detail=f"HUB API error: {str(e)}")
+    inference_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
-        inference_ms = round((time.perf_counter() - start_time) * 1000, 2)
-        return {
-            "image_width": hub_json.get("image_width", 0),
-            "image_height": hub_json.get("image_height", 0),
-            "detections": hub_json.get("detections", []),
-            "count": len(hub_json.get("detections", [])),
-            "inference_ms": inference_ms,
-            "annotated_image": hub_json.get("annotated_image", "")
-        }
+    # 5. Parse detections from Ultralytics Cloud Run schema
+    detections: List[Dict[str, Any]] = []
+    images_list = hub_json.get("images", [])
+    if images_list and len(images_list) > 0:
+        first_img = images_list[0]
+        results_list = first_img.get("results", [])
+        for item in results_list:
+            box_dict = item.get("box", {})
+            x1 = round(float(box_dict.get("x1", 0)), 1)
+            y1 = round(float(box_dict.get("y1", 0)), 1)
+            x2 = round(float(box_dict.get("x2", 0)), 1)
+            y2 = round(float(box_dict.get("y2", 0)), 1)
 
-    # Option B: Forward to Remote Dedicated Backend (Render / Railway / Hugging Face)
-    if REMOTE_BACKEND_URL:
-        endpoint = f"{REMOTE_BACKEND_URL}/predict"
-        files = {"file": (file.filename or "image.jpg", contents, "image/jpeg")}
-        data = {"conf": str(conf_clamped)}
+            class_name = item.get("name") or str(item.get("class", "object"))
+            confidence_score = round(float(item.get("confidence", 0)), 4)
 
-        start_time = time.perf_counter()
-        async with httpx.AsyncClient(timeout=45.0) as client:
-            try:
-                resp = await client.post(endpoint, files=files, data=data)
-                resp.raise_for_status()
-                return resp.json()
-            except Exception as e:
-                raise HTTPException(
-                    status_code=502,
-                    detail=f"Failed to communicate with remote backend at {endpoint}: {str(e)}"
-                )
+            # Filter by confidence threshold
+            if confidence_score >= conf_clamped:
+                detections.append({
+                    "class_name": class_name,
+                    "confidence": confidence_score,
+                    "bbox": [x1, y1, x2, y2]
+                })
 
-    # Option C: Local YOLO (if torch & ultralytics are installed in the environment)
-    if LOCAL_YOLO_AVAILABLE:
-        from webapp.main import yolo_model, model_loaded
-        if yolo_model is not None:
-            pil_image = Image.open(io.BytesIO(contents)).convert("RGB")
-            t0 = time.perf_counter()
-            results = yolo_model.predict(source=pil_image, conf=conf_clamped, verbose=False)
-            elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
-            result = results[0]
+    # 6. Render annotated image with bounding boxes
+    annotated_b64 = draw_bounding_boxes(contents, detections)
 
-            detections = []
-            if result.boxes is not None:
-                for box in result.boxes:
-                    cls_id = int(box.cls[0].item())
-                    cls_name = result.names.get(cls_id, str(cls_id))
-                    conf_score = round(float(box.conf[0].item()), 4)
-                    coords = [round(float(c), 1) for c in box.xyxy[0].tolist()]
-                    detections.append({"class_name": cls_name, "confidence": conf_score, "bbox": coords})
+    return {
+        "image_width": img_width,
+        "image_height": img_height,
+        "detections": detections,
+        "count": len(detections),
+        "inference_ms": inference_ms,
+        "annotated_image": annotated_b64
+    }
 
-            # Plot
-            import cv2
-            plotted_bgr = result.plot()
-            _, enc = cv2.imencode(".jpg", plotted_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
-            b64 = "data:image/jpeg;base64," + base64.b64encode(enc).decode("utf-8")
 
-            return {
-                "image_width": pil_image.width,
-                "image_height": pil_image.height,
-                "detections": detections,
-                "count": len(detections),
-                "inference_ms": elapsed_ms,
-                "annotated_image": b64
-            }
+# Mount static files if present
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-    # If neither is configured
-    raise HTTPException(
-        status_code=503,
-        detail=(
-            "Vercel Serverless functions have a 250MB limit which cannot package the 850MB PyTorch library directly. "
-            "To run inference on Vercel, either: (1) Set USE_HUB_API=true and HUB_API_KEY in your Vercel Project Settings, "
-            "or (2) Host the backend on Render/Railway/HuggingFace and set REMOTE_BACKEND_URL in Vercel."
-        )
-    )
+
+@app.get("/")
+def serve_index():
+    index_file = STATIC_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    return JSONResponse(status_code=404, content={"error": "index.html not found"})
