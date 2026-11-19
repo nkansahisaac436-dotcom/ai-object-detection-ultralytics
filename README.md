@@ -13,10 +13,22 @@ This project focuses on building a custom computer vision pipeline for real-time
 - **Model Training:** Fine-tune pre-trained Ultralytics YOLO models on custom annotated datasets.
 - **Inference & Evaluation:** Benchmark precision, recall, and mAP (mean Average Precision) for real-time detection on CPU/GPU.
 - **AI Foundations Practice:** Build core machine learning and generative AI competencies, including regression modeling, local LLM deployment with Ollama, and full coursework progression.
+- **Interactive Web Application:** Deploy a full-stack web application (FastAPI + HTML5/CSS/JS) supporting photo upload, webcam capture, confidence thresholding, and visual side-by-side detection bounding boxes.
 
 ## 📁 Repository Structure
 ```
 ai-object-detection-ultralytics/
+├── webapp/                              # Full-stack object detection web application
+│   ├── main.py                          # FastAPI backend with /predict and /health
+│   ├── requirements.txt                 # Backend dependencies
+│   ├── .env.example                     # Environment configuration template
+│   ├── README.md                        # Web application user guide
+│   ├── model/
+│   │   └── .gitkeep                     # Target folder for trained best.pt weights
+│   └── static/
+│       ├── index.html                   # Modern responsive UI
+│       ├── style.css                    # Professional styles
+│       └── app.js                       # Vanilla JS frontend & webcam controller
 ├── notebooks/
 │   ├── coursework/                      # University coursework (migrated from Google Colab)
 │   │   ├── 01_python_basics_variables_and_loops.ipynb
@@ -30,29 +42,24 @@ ai-object-detection-ultralytics/
 └── README.md                            # Project overview and documentation
 ```
 
-## 🚀 Getting Started
+## 🚀 Running the Web Application
 
-### Prerequisites
-- Python 3.10+
-- [Ollama](https://ollama.com/) (for local LLM tasks)
-- Git
+To run the interactive object detection web application:
 
-### Setup
-1. Clone the repository:
+1. Navigate into the `webapp` folder:
    ```bash
-   git clone https://github.com/nkansahisaac436-dotcom/ai-object-detection-ultralytics.git
-   cd ai-object-detection-ultralytics
+   cd webapp
    ```
-2. Create and activate a virtual environment:
+2. Install dependencies:
    ```bash
-   python -m venv venv
-   # On Windows:
-   venv\Scripts\activate
+   pip install -r requirements.txt
    ```
-3. Install dependencies:
+3. Place your trained weights (`best.pt`) into `webapp/model/best.pt`.
+4. Start the server:
    ```bash
-   pip install ultralytics scikit-learn matplotlib pandas seaborn ollama
+   uvicorn main:app --reload
    ```
+5. Open your browser at **[http://localhost:8000](http://localhost:8000)**.
 
 ---
 

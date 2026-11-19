@@ -10,29 +10,34 @@ __pycache__/
 *$py.class
 .ipynb_checkpoints/
 
-# Raw images and datasets
+# Uploads & temporary test files
+uploads/
+webapp/uploads/
+*.tmp
+
+# Raw images and video datasets
 raw_images/
 data/raw/
 datasets/
-*.jpg
-*.jpeg
-*.png
-*.bmp
 *.mp4
 *.avi
 
-# Large weights and model checkpoints
+# Large weights and training runs
 weights/
 runs/
-*.pt
 *.pth
 *.onnx
 *.engine
 *.weights
 *.bin
 *.tflite
+*.pt
+# Allow tracking model weights in webapp/model/ if under 100 MB
+!webapp/model/best.pt
+!webapp/model/.gitkeep
 
 # Environment variables & system files
 .env
+.env.local
 .DS_Store
 Thumbs.db
