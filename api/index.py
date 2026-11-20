@@ -6,10 +6,10 @@ import logging
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, status
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, status, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from PIL import Image, ImageDraw
 
 # Setup logging
@@ -40,8 +40,26 @@ HUB_API_KEY = os.getenv("HUB_API_KEY", DEFAULT_HUB_KEY)
 USE_HUB_API = os.getenv("USE_HUB_API", "true").lower() in ("true", "1", "yes")
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-STATIC_DIR = BASE_DIR / "public" if (BASE_DIR / "public").exists() else BASE_DIR / "webapp" / "static"
+API_DIR = Path(__file__).resolve().parent
+STATIC_DIRS = [
+    API_DIR / "static",
+    API_DIR,
+    API_DIR.parent / "public",
+    API_DIR.parent / "public" / "static",
+    API_DIR.parent / "webapp" / "static",
+    API_DIR.parent,
+]
+
+def load_file_content(filename: str) -> Optional[str]:
+    """Search multiple candidate locations for static assets."""
+    for directory in STATIC_DIRS:
+        target = directory / filename
+        if target.exists() and target.is_file():
+            try:
+                return target.read_text(encoding="utf-8")
+            except Exception:
+                pass
+    return None
 
 
 def draw_bounding_boxes(image_bytes: bytes, detections: List[Dict[str, Any]]) -> str:
@@ -199,14 +217,37 @@ async def predict(
     }
 
 
-# Mount static files if present
-if STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+# Mount static files directory if available
+_static_folder = API_DIR / "static"
+if _static_folder.exists():
+    app.mount("/static", StaticFiles(directory=str(_static_folder)), name="static")
 
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
+@app.get("/index.html", response_class=HTMLResponse)
 def serve_index():
-    index_file = STATIC_DIR / "index.html"
-    if index_file.exists():
-        return FileResponse(index_file)
-    return JSONResponse(status_code=404, content={"error": "index.html not found"})
+    content = load_file_content("index.html")
+    if content:
+        return HTMLResponse(content=content)
+    return HTMLResponse(
+        content="""<!DOCTYPE html><html><body><h2>AI Object Detection Webapp</h2><p>Loading UI...</p></body></html>""",
+        status_code=200
+    )
+
+
+@app.get("/style.css")
+@app.get("/static/style.css")
+def serve_css():
+    content = load_file_content("style.css")
+    if content:
+        return Response(content=content, media_type="text/css")
+    raise HTTPException(status_code=404, detail="style.css not found")
+
+
+@app.get("/app.js")
+@app.get("/static/app.js")
+def serve_js():
+    content = load_file_content("app.js")
+    if content:
+        return Response(content=content, media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="app.js not found")
