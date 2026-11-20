@@ -275,7 +275,14 @@ document.addEventListener("DOMContentLoaded", () => {
         body: formData
       });
 
-      const data = await resp.json();
+      let data;
+      const contentType = resp.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        data = await resp.json();
+      } else {
+        const text = await resp.text();
+        data = { detail: text || `Server error (${resp.status})` };
+      }
 
       if (!resp.ok) {
         const errorMsg = data.detail || `Server returned error status ${resp.status}`;

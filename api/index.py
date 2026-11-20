@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
+import httpx
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, status, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -120,101 +121,110 @@ async def predict(
     conf: float = Form(0.25, description="Confidence threshold between 0.05 and 0.95")
 ):
     """Run prediction via Ultralytics Cloud Run endpoint."""
-    # 1. Validate file format
-    allowed_extensions = {".jpg", ".jpeg", ".png", ".webp"}
-    file_ext = Path(file.filename or "").suffix.lower()
-    content_type = (file.content_type or "").lower()
-
-    if file_ext not in allowed_extensions and not content_type.startswith("image/"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid file type. Please upload a valid image (JPEG, PNG, or WebP)."
-        )
-
-    # 2. Validate file size
-    contents = await file.read()
-    if len(contents) > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File size exceeds 10 MB limit ({len(contents) / (1024*1024):.2f} MB received)."
-        )
-
-    if len(contents) == 0:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
-
-    conf_clamped = max(0.05, min(0.95, float(conf)))
-
-    # 3. Get image dimensions
     try:
-        pil_img = Image.open(io.BytesIO(contents))
-        img_width, img_height = pil_img.size
-    except Exception:
-        img_width, img_height = 0, 0
+        # 1. Validate file format
+        allowed_extensions = {".jpg", ".jpeg", ".png", ".webp"}
+        file_ext = Path(file.filename or "").suffix.lower()
+        content_type = (file.content_type or "").lower()
 
-    # 4. Call Ultralytics Inference API
-    headers = {
-        "x-api-key": HUB_API_KEY,
-        "Authorization": f"Bearer {HUB_API_KEY}"
-    }
-    files = {"file": (file.filename or "image.jpg", contents, "image/jpeg")}
-    data = {"conf": str(conf_clamped)}
+        if file_ext not in allowed_extensions and not content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid file type. Please upload a valid image (JPEG, PNG, or WebP)."
+            )
 
-    start_time = time.perf_counter()
-    async with httpx.AsyncClient(timeout=40.0) as client:
+        # 2. Validate file size
+        contents = await file.read()
+        if len(contents) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File size exceeds 10 MB limit ({len(contents) / (1024*1024):.2f} MB received)."
+            )
+
+        if len(contents) == 0:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+        conf_clamped = max(0.05, min(0.95, float(conf)))
+
+        # 3. Get image dimensions
         try:
-            resp = await client.post(HUB_MODEL_URL, headers=headers, files=files, data=data)
-            resp.raise_for_status()
-            hub_json = resp.json()
-        except httpx.HTTPStatusError as e:
-            logger.error(f"Ultralytics Cloud API error: {e.response.text}")
-            raise HTTPException(
-                status_code=e.response.status_code,
-                detail=f"Ultralytics Cloud API returned error: {e.response.text}"
-            )
-        except Exception as e:
-            logger.error(f"Connection error to Cloud Run: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Failed to communicate with Ultralytics Cloud Run: {str(e)}"
-            )
+            pil_img = Image.open(io.BytesIO(contents))
+            img_width, img_height = pil_img.size
+        except Exception:
+            img_width, img_height = 0, 0
 
-    inference_ms = round((time.perf_counter() - start_time) * 1000, 2)
+        # 4. Call Ultralytics Inference API
+        headers = {
+            "x-api-key": HUB_API_KEY,
+            "Authorization": f"Bearer {HUB_API_KEY}"
+        }
+        files = {"file": (file.filename or "image.jpg", contents, content_type or "image/jpeg")}
+        data = {"conf": str(conf_clamped)}
 
-    # 5. Parse detections from Ultralytics Cloud Run schema
-    detections: List[Dict[str, Any]] = []
-    images_list = hub_json.get("images", [])
-    if images_list and len(images_list) > 0:
-        first_img = images_list[0]
-        results_list = first_img.get("results", [])
-        for item in results_list:
-            box_dict = item.get("box", {})
-            x1 = round(float(box_dict.get("x1", 0)), 1)
-            y1 = round(float(box_dict.get("y1", 0)), 1)
-            x2 = round(float(box_dict.get("x2", 0)), 1)
-            y2 = round(float(box_dict.get("y2", 0)), 1)
+        start_time = time.perf_counter()
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            try:
+                resp = await client.post(HUB_MODEL_URL, headers=headers, files=files, data=data)
+                resp.raise_for_status()
+                hub_json = resp.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Ultralytics Cloud API error: {e.response.text}")
+                raise HTTPException(
+                    status_code=e.response.status_code,
+                    detail=f"Ultralytics Cloud API error: {e.response.text}"
+                )
+            except Exception as e:
+                logger.error(f"Connection error to Cloud Run: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"Failed to communicate with Ultralytics Cloud Run: {str(e)}"
+                )
 
-            class_name = item.get("name") or str(item.get("class", "object"))
-            confidence_score = round(float(item.get("confidence", 0)), 4)
+        inference_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
-            # Filter by confidence threshold
-            if confidence_score >= conf_clamped:
-                detections.append({
-                    "class_name": class_name,
-                    "confidence": confidence_score,
-                    "bbox": [x1, y1, x2, y2]
-                })
+        # 5. Parse detections from Ultralytics Cloud Run schema
+        detections: List[Dict[str, Any]] = []
+        images_list = hub_json.get("images", [])
+        if images_list and len(images_list) > 0:
+            first_img = images_list[0]
+            results_list = first_img.get("results", [])
+            for item in results_list:
+                box_dict = item.get("box", {})
+                x1 = round(float(box_dict.get("x1", 0)), 1)
+                y1 = round(float(box_dict.get("y1", 0)), 1)
+                x2 = round(float(box_dict.get("x2", 0)), 1)
+                y2 = round(float(box_dict.get("y2", 0)), 1)
 
-    # 6. Render annotated image with bounding boxes
-    annotated_b64 = draw_bounding_boxes(contents, detections)
+                class_name = item.get("name") or str(item.get("class", "object"))
+                confidence_score = round(float(item.get("confidence", 0)), 4)
 
-    return {
-        "image_width": img_width,
-        "image_height": img_height,
-        "detections": detections,
-        "count": len(detections),
-        "inference_ms": inference_ms,
-        "annotated_image": annotated_b64
-    }
+                # Filter by confidence threshold
+                if confidence_score >= conf_clamped:
+                    detections.append({
+                        "class_name": class_name,
+                        "confidence": confidence_score,
+                        "bbox": [x1, y1, x2, y2]
+                    })
+
+        # 6. Render annotated image with bounding boxes
+        annotated_b64 = draw_bounding_boxes(contents, detections)
+
+        return {
+            "image_width": img_width,
+            "image_height": img_height,
+            "detections": detections,
+            "count": len(detections),
+            "inference_ms": inference_ms,
+            "annotated_image": annotated_b64
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Unexpected error in /predict")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Inference processing error: {str(e)}"}
+        )
 
 
 # Mount static files directory if available
