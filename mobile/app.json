@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Isaac YOLO Detection",
+    "slug": "ai-object-detection-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0F172A",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pentecost.isaacyolo"
+    },
+    "android": {
+      "package": "com.pentecost.isaacyolo",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app needs access to your photos to detect Isaac in your pictures.",
+          "cameraPermission": "The app needs access to your camera to capture live photos for detection."
+        }
+      ]
+    ]
+  }
+}
