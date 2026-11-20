@@ -22,6 +22,16 @@ ai-object-detection-ultralytics/
 │   ├── index.py                         # Serverless FastAPI app (lightweight, connects to Cloud Run)
 │   └── requirements.txt                 # Vercel dependencies (FastAPI, PIL, HTTPX - no heavy torch)
 ├── vercel.json                          # Vercel deployment routing and rewrites
+├── mobile/                              # Cross-platform React Native & Expo mobile app (Android & iOS)
+│   ├── App.js                           # Main application screen & navigation
+│   ├── app.json                         # Expo mobile configuration & camera permissions
+│   ├── package.json                     # Mobile app dependencies
+│   ├── README.md                        # Mobile setup & Expo Go guide
+│   └── src/
+│       ├── config.js                    # API endpoints & constants
+│       ├── services/api.js              # Camera upload & inference client
+│       ├── styles/theme.js              # Dark slate / indigo UI theme tokens
+│       └── components/                  # Header, ConfidenceSlider, ImagePreview, DetectionsList
 ├── webapp/                              # Full-stack object detection web application
 │   ├── main.py                          # FastAPI backend with /predict and /health
 │   ├── requirements.txt                 # Backend dependencies (with Ultralytics & PyTorch)
@@ -61,6 +71,27 @@ This project is fully configured for zero-configuration deployment on **Vercel**
 5. In ~30 seconds, your web application will be live at a public URL (e.g. `https://ai-object-detection-ultralytics.vercel.app`)!
 
 > **How it works:** Vercel serves the responsive frontend and routes `/predict` and `/health` to `api/index.py`, which forwards requests to your dedicated Ultralytics Cloud Run inference endpoint and renders color-coded detection boxes using PIL.
+
+---
+
+## 📱 Running the Mobile App (iOS & Android)
+
+A full-featured React Native & Expo mobile app is included in the `mobile/` directory:
+
+1. Install **Expo Go** on your physical phone ([Google Play Store](https://play.google.com/store/apps/details?id=host.exp.exponent) or [iOS App Store](https://apps.apple.com/app/expo-go/id982107779)).
+2. In your terminal, navigate to the `mobile` folder:
+   ```bash
+   cd mobile
+   ```
+3. Install dependencies:
+   ```bash
+   npm install
+   ```
+4. Start Expo:
+   ```bash
+   npm start
+   ```
+5. Scan the QR code with your phone (using Expo Go on Android or Camera app on iPhone) to test real-time camera inference!
 
 ---
 
