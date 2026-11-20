@@ -41,7 +41,7 @@ USE_HUB_API = os.getenv("USE_HUB_API", "true").lower() in ("true", "1", "yes")
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-STATIC_DIR = BASE_DIR / "webapp" / "static"
+STATIC_DIR = BASE_DIR / "public" if (BASE_DIR / "public").exists() else BASE_DIR / "webapp" / "static"
 
 
 def draw_bounding_boxes(image_bytes: bytes, detections: List[Dict[str, Any]]) -> str:
