@@ -14,9 +14,10 @@
     "android": {
       "package": "com.pentecost.isaacyolo",
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "plugins": [
@@ -30,6 +31,14 @@
     ],
     "runtimeVersion": {
       "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a31674eb-4635-4f8c-804c-7a73cf8e4b1e"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a31674eb-4635-4f8c-804c-7a73cf8e4b1e"
+      }
     }
   }
 }
