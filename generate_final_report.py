@@ -1,11 +1,12 @@
 """
-Full Production Academic Report Generator
+Full Production Academic Report Generator (Revised Edition)
 Title: Custom Object Detection and Recognition of Myself Using Ultralytics YOLO
 Student: Isaac Nkansah
-Pentecost University College (PUC), Ghana
+Pentecost University, Ghana
 """
 
 import os
+import shutil
 import docx
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -14,6 +15,12 @@ from docx.oxml import parse_xml, OxmlElement
 from docx.oxml.ns import nsdecls, qn
 
 def generate_report():
+    # Ensure logo exists in local directory
+    logo_src = r"C:/Users/HP/.gemini/antigravity/brain/13081606-30bc-43ce-a6bc-f92c485fee59/.user_uploaded/media_1795284739799_b15a57ec.png"
+    logo_dst = "pentecost_logo.png"
+    if os.path.exists(logo_src) and not os.path.exists(logo_dst):
+        shutil.copyfile(logo_src, logo_dst)
+
     doc = docx.Document()
 
     # -------------------------------------------------------------
@@ -112,7 +119,6 @@ def generate_report():
         return p
 
     def add_table_with_caption(table_num, title, headers, data, col_widths=None):
-        # Table Caption ABOVE Table
         cap_p = doc.add_paragraph()
         cap_p.paragraph_format.space_before = Pt(12)
         cap_p.paragraph_format.space_after = Pt(4)
@@ -128,11 +134,9 @@ def generate_report():
         r2.font.size = Pt(11)
         r2.font.color.rgb = RGBColor(0, 0, 0)
 
-        # Create Table
         table = doc.add_table(rows=len(data) + 1, cols=len(headers))
         table.alignment = WD_TABLE_ALIGNMENT.CENTER
 
-        # Table Borders: Simple Black
         tblPr = table._tbl.tblPr
         borders = parse_xml(
             f'<w:tblBorders {nsdecls("w")}>'
@@ -146,7 +150,6 @@ def generate_report():
         )
         tblPr.append(borders)
 
-        # Header Row: Bold, Shaded Light Grey (#E5E5E5)
         hdr_cells = table.rows[0].cells
         for i, header_text in enumerate(headers):
             cell = hdr_cells[i]
@@ -163,7 +166,6 @@ def generate_report():
                 r.font.bold = True
                 r.font.color.rgb = RGBColor(0, 0, 0)
 
-        # Body Rows
         for r_idx, row_data in enumerate(data):
             row_cells = table.rows[r_idx + 1].cells
             for c_idx, cell_value in enumerate(row_data):
@@ -173,7 +175,6 @@ def generate_report():
                 p.paragraph_format.space_before = Pt(3)
                 p.paragraph_format.space_after = Pt(3)
                 p.paragraph_format.line_spacing = 1.15
-                # Center align short numbers or left align text
                 if c_idx > 0 and len(str(cell_value)) < 15:
                     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 else:
@@ -183,17 +184,14 @@ def generate_report():
                     r.font.size = Pt(10)
                     r.font.color.rgb = RGBColor(0, 0, 0)
 
-        # Column widths if provided
         if col_widths:
             for row in table.rows:
                 for idx, width in enumerate(col_widths):
                     row.cells[idx].width = Inches(width)
 
-        # Space after table
         doc.add_paragraph().paragraph_format.space_after = Pt(6)
 
     def add_figure_placeholder(fig_num, title, description, note_text):
-        # 1-cell box table (14 cm wide, 8 cm high)
         tbl = doc.add_table(rows=1, cols=1)
         tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
         cell = tbl.cell(0, 0)
@@ -201,7 +199,6 @@ def generate_report():
         tbl.rows[0].height = Inches(3.15)  # 8 cm
         tbl.rows[0].height_rule = docx.enum.table.WD_ROW_HEIGHT_RULE.AT_LEAST
 
-        # Black border around cell
         borders = parse_xml(
             f'<w:tcBorders {nsdecls("w")}>'
             f'<w:top w:val="single" w:sz="6" w:space="0" w:color="000000"/>'
@@ -221,7 +218,6 @@ def generate_report():
         run.font.bold = True
         run.font.color.rgb = RGBColor(0, 0, 0)
 
-        # Caption BELOW Figure
         cap_p = doc.add_paragraph()
         cap_p.paragraph_format.space_before = Pt(6)
         cap_p.paragraph_format.space_after = Pt(2)
@@ -237,7 +233,6 @@ def generate_report():
         c_run2.font.size = Pt(11)
         c_run2.font.color.rgb = RGBColor(0, 0, 0)
 
-        # Note below caption
         note_p = doc.add_paragraph()
         note_p.paragraph_format.space_before = Pt(0)
         note_p.paragraph_format.space_after = Pt(12)
@@ -274,31 +269,39 @@ def generate_report():
         doc.add_paragraph().paragraph_format.space_after = Pt(6)
 
     # =============================================================
-    # 4. COVER PAGE (Section 1)
+    # 4. COVER PAGE (Page 1) - Featuring Official Pentecost University Logo
     # =============================================================
     sec0 = doc.sections[0]
     sec0.different_first_page_header_footer = False
 
-    # University & Faculty Header
+    # Logo Centered at Top
+    if os.path.exists("pentecost_logo.png"):
+        p_logo = doc.add_paragraph()
+        p_logo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_logo.paragraph_format.space_before = Pt(10)
+        p_logo.paragraph_format.space_after = Pt(12)
+        r_logo = p_logo.add_run()
+        r_logo.add_picture("pentecost_logo.png", width=Inches(2.4))
+
+    # University Name & Faculty Placeholder
     p_inst = doc.add_paragraph()
     p_inst.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_inst.paragraph_format.space_before = Pt(20)
     p_inst.paragraph_format.space_after = Pt(4)
-    r = p_inst.add_run("PENTECOST UNIVERSITY COLLEGE (PUC), GHANA\n")
+    r = p_inst.add_run("PENTECOST UNIVERSITY\n")
     r.font.name = "Times New Roman"
-    r.font.size = Pt(14)
+    r.font.size = Pt(15)
     r.font.bold = True
     r.font.color.rgb = RGBColor(0, 0, 0)
 
-    r_fac = p_inst.add_run("FACULTY OF ENGINEERING AND APPLIED COMPUTING (FESAC)\nDEPARTMENT OF INFORMATION TECHNOLOGY AND SOFTWARE ENGINEERING")
+    r_fac = p_inst.add_run("[FACULTY / DEPARTMENT - TO BE COMPLETED BY STUDENT]\n[E.G., FACULTY OF ENGINEERING AND APPLIED COMPUTING (FESAC)]")
     r_fac.font.name = "Times New Roman"
     r_fac.font.size = Pt(11)
     r_fac.font.bold = True
     r_fac.font.color.rgb = RGBColor(0, 0, 0)
 
-    # Title spacing
-    p_space1 = doc.add_paragraph()
-    p_space1.paragraph_format.space_before = Pt(70)
+    # Title Spacing
+    p_sp = doc.add_paragraph()
+    p_sp.paragraph_format.space_before = Pt(36)
 
     # Report Title
     p_title = doc.add_paragraph()
@@ -307,17 +310,17 @@ def generate_report():
     p_title.paragraph_format.line_spacing = 1.2
     r_title = p_title.add_run("CUSTOM OBJECT DETECTION AND RECOGNITION OF MYSELF USING ULTRALYTICS YOLO")
     r_title.font.name = "Times New Roman"
-    r_title.font.size = Pt(18)
+    r_title.font.size = Pt(17)
     r_title.font.bold = True
     r_title.font.color.rgb = RGBColor(0, 0, 0)
 
     # Subtitle
     p_sub = doc.add_paragraph()
     p_sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_sub.paragraph_format.space_after = Pt(60)
+    p_sub.paragraph_format.space_after = Pt(36)
     r_sub = p_sub.add_run("An Individual Assessment (IA) Project Report Submitted in Partial Fulfilment of the Requirements for the Award of the Degree of Bachelor of Science in Industrial Software Engineering")
     r_sub.font.name = "Times New Roman"
-    r_sub.font.size = Pt(12)
+    r_sub.font.size = Pt(11.5)
     r_sub.font.italic = True
     r_sub.font.color.rgb = RGBColor(0, 0, 0)
 
@@ -325,17 +328,17 @@ def generate_report():
     p_meta = doc.add_paragraph()
     p_meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_meta.paragraph_format.line_spacing = 1.3
-    p_meta.paragraph_format.space_after = Pt(40)
+    p_meta.paragraph_format.space_after = Pt(20)
 
     def add_meta_line(label, value):
         r_l = p_meta.add_run(f"{label}: ")
         r_l.font.name = "Times New Roman"
-        r_l.font.size = Pt(12)
+        r_l.font.size = Pt(11.5)
         r_l.font.bold = True
         r_l.font.color.rgb = RGBColor(0, 0, 0)
         r_v = p_meta.add_run(f"{value}\n")
         r_v.font.name = "Times New Roman"
-        r_v.font.size = Pt(12)
+        r_v.font.size = Pt(11.5)
         r_v.font.color.rgb = RGBColor(0, 0, 0)
 
     add_meta_line("Candidate Name", "Isaac Nkansah")
@@ -348,7 +351,7 @@ def generate_report():
     add_meta_line("Academic Year", "2026/2027")
 
     # =============================================================
-    # 5. FRONT MATTER (Section 2 - Roman Numerals i, ii, iii...)
+    # 5. PAGE 2: TABLE OF CONTENTS (Starts directly on Page 2!)
     # =============================================================
     sec1 = doc.add_section()
     sec1.different_first_page_header_footer = False
@@ -365,48 +368,7 @@ def generate_report():
     fld_page1 = parse_xml(r'<w:fldSimple %s w:instr="PAGE"/>' % nsdecls('w'))
     f_run1._r.append(fld_page1)
 
-    # 5.1 DECLARATION
-    add_h1("Declaration")
-    add_p("I, Isaac Nkansah, hereby declare that this project report entitled \"Custom Object Detection and Recognition of Myself Using Ultralytics YOLO\" represents my own independent academic and technical work. It has been authored and developed in partial fulfilment of the requirements for the Artificial Intelligence and Machine Learning course within the Department of Information Technology and Software Engineering, Pentecost University College (PUC), Ghana.")
-    add_p("I affirm that this work has not been previously submitted, in whole or in part, for any degree, diploma, or other qualification at this or any other tertiary institution. All secondary information, theoretical frameworks, models, datasets, open-source libraries, and scholarly literature utilized throughout this investigation have been fully acknowledged and cited in accordance with strict academic conventions and IEEE referencing guidelines.")
-
-    p_sig = doc.add_paragraph()
-    p_sig.paragraph_format.space_before = Pt(36)
-    p_sig.paragraph_format.line_spacing = 1.3
-    r = p_sig.add_run("_________________________________________\n")
-    r.font.name = "Times New Roman"
-    r = p_sig.add_run("Candidate Signature: Isaac Nkansah\n")
-    r.font.bold = True
-    r = p_sig.add_run("Date: 20 November 2026\n\n\n")
-
-    r = p_sig.add_run("_________________________________________\n")
-    r = p_sig.add_run("Supervisor / Lecturer Certification: [TO BE FILLED BY STUDENT - LECTURER NAME]\n")
-    r.font.bold = True
-    r = p_sig.add_run("Faculty of Engineering and Applied Computing (FESAC)\n")
-    r = p_sig.add_run("Pentecost University College (PUC), Ghana\n")
-    r = p_sig.add_run("Date: [TO BE FILLED BY STUDENT - DATE]")
-
-    doc.add_page_break()
-
-    # 5.2 ACKNOWLEDGEMENTS
-    add_h1("Acknowledgements")
-    add_p("First and foremost, I render my deepest gratitude and praise to the Almighty God for His unfailing grace, divine wisdom, sound health, and intellectual fortitude throughout the execution and realization of this capstone research endeavour.")
-    add_p("My sincere appreciation goes to the Faculty of Engineering and Applied Computing (FESAC) and the Department of Information Technology and Software Engineering at Pentecost University College (PUC), Ghana. I am profoundly indebted to my course lecturer and project supervisor, [TO BE FILLED BY STUDENT - LECTURER NAME], whose pedagogical guidance, rigorous intellectual critique, and demanding project standards provided the impetus for pursuing excellence and adhering to engineering discipline throughout this project.")
-    add_p("Special thanks are extended to my academic peers and classmates at Pentecost University College who graciously consented to participate in group photographic sessions. Their presence provided the diverse, realistic background context and non-target facial variations necessary to rigorously test, train, and validate the model's discriminative visual recognition capabilities under multi-person conditions.")
-    add_p("Lastly, I express heartfelt gratitude to my family and friends for their enduring patience, moral encouragement, and steadfast prayers during the demanding phases of dataset curation, model hyperparameter tuning, cloud integration, and multi-platform software engineering.")
-
-    doc.add_page_break()
-
-    # 5.3 ABSTRACT
-    add_h1("Abstract")
-    add_p("Real-time automated personal recognition has emerged as a critical capability across modern authentication, surveillance, and intelligent human-computer interaction paradigms. While conventional biometric architectures traditionally isolate facial crops using static feature points, contemporary industrial requirements necessitate robust, one-stage object detection models capable of simultaneously detecting, localizing, and discriminating specific personal identities within unstructured environments, cluttered backgrounds, and complex multi-person scenes. This academic report details the systematic engineering, training, comparative evaluation, and multi-platform cloud deployment of a custom deep learning visual recognition system specifically designed to identify the author (\"Isaac\") using the state-of-the-art Ultralytics YOLO (You Only Look Once) architecture.")
-    add_p("A rigorous empirical methodology was formulated, commencing with the acquisition and curation of a dedicated personal visual corpus comprising 707 high-resolution photographic images. To ensure operational robustness across real-world deployment contexts, the dataset captured extreme variations in illumination, viewing angles, facial orientations, distance, scale, occlusions, and social group compositions containing between 1 and 8 individuals. Bounding-box annotations were established for a single target class (\"Isaac\"), while non-target individuals were deliberately maintained as unannotated background elements to penalize false-positive identity attribution. Model training was conducted on the Ultralytics cloud infrastructure utilizing transfer learning from the YOLO26n (nano) architectural baseline at a standardized input resolution of 640 × 640 pixels.")
-    add_p("Two primary training iterations were executed and systematically contrasted: Run 1 (\"isaacimage\"), serving as the baseline, and Run 2 (\"v2-707imgs\"), incorporating the comprehensive 707-image corpus and advanced multi-person context. Quantitative benchmarking demonstrated substantial performance gains in Run 2 across all primary computer vision evaluation metrics: Precision increased from 69.7% to 88.1% (+18.4%), Recall rose from 60.3% to 85.1% (+24.8%), Mean Average Precision at 0.50 IoU (mAP50) advanced from 68.3% to 88.4% (+20.1%), and mAP50-95 surged from 29.2% to 47.9% (+18.7%). Comprehensive diagnostic curve analysis—encompassing precision-recall (PR) trajectories, F1-confidence profiles, and confusion matrices—confirmed that the model achieved robust convergence with minimal background false alarms.")
-    add_p("To translate theoretical performance into industrial practice, the validated weights were deployed to an Ultralytics managed Cloud Run endpoint situated in the London (UK) region. An asynchronous REST API inference gateway was engineered utilizing FastAPI and deployed onto Vercel serverless cloud infrastructure, incorporating server-side Pillow image optimization to guarantee sub-second latency and circumvent payload constraints. Dual production client interfaces were developed: an interactive responsive web application featuring real-time webcam inference and history inspection, and a native cross-platform mobile application developed with React Native and Expo (SDK 58.0.0). Real-world field evaluations affirmed that the system achieves rapid, highly reliable identity discrimination across diverse operational environments, satisfying all objectives established for this final-year Industrial Software Engineering assessment.")
-
-    doc.add_page_break()
-
-    # 5.4 TABLE OF CONTENTS
+    # 5.1 TABLE OF CONTENTS
     add_h1("Table of Contents")
     p_toc = doc.add_paragraph()
     p_toc.paragraph_format.space_after = Pt(12)
@@ -419,14 +381,12 @@ def generate_report():
     r_toc._r.append(instrText)
     r_toc._r.append(fldChar2)
 
-    # Pre-populated TOC entries for compatibility across all document viewers
     toc_entries = [
-        ("Declaration", "i"),
-        ("Acknowledgements", "ii"),
-        ("Abstract", "iii"),
-        ("List of Figures", "v"),
-        ("List of Tables", "vi"),
-        ("List of Abbreviations", "vii"),
+        ("Table of Contents", "i"),
+        ("Abstract", "ii"),
+        ("List of Figures", "iii"),
+        ("List of Tables", "iv"),
+        ("List of Abbreviations", "v"),
         ("1. Introduction", "1"),
         ("    1.1 Background of the Study", "1"),
         ("    1.2 Problem Statement", "2"),
@@ -489,7 +449,6 @@ def generate_report():
         r_t.font.name = "Times New Roman"
         r_t.font.size = Pt(11)
         r_t.font.color.rgb = RGBColor(0, 0, 0)
-        # Tab leader
         r_dots = p_item.add_run(f" {'.' * max(2, (80 - len(title_text) * 2))} ")
         r_dots.font.name = "Times New Roman"
         r_dots.font.size = Pt(10)
@@ -502,7 +461,16 @@ def generate_report():
     r_toc._r.append(fldChar3)
     doc.add_page_break()
 
-    # 5.5 LIST OF FIGURES
+    # 5.2 ABSTRACT (Follows Table of Contents)
+    add_h1("Abstract")
+    add_p("Real-time automated personal recognition has emerged as a critical capability across modern authentication, surveillance, and intelligent human-computer interaction paradigms. While conventional biometric architectures traditionally isolate facial crops using static feature points, contemporary industrial requirements necessitate robust, one-stage object detection models capable of simultaneously detecting, localizing, and discriminating specific personal identities within unstructured environments, cluttered backgrounds, and complex multi-person scenes. This academic report details the systematic engineering, training, comparative evaluation, and multi-platform cloud deployment of a custom deep learning visual recognition system specifically designed to identify the author (\"Isaac\") using the state-of-the-art Ultralytics YOLO (You Only Look Once) architecture.")
+    add_p("A rigorous empirical methodology was formulated, commencing with the acquisition and curation of a dedicated personal visual corpus comprising 707 high-resolution photographic images. To ensure operational robustness across real-world deployment contexts, the dataset captured extreme variations in illumination, viewing angles, facial orientations, distance, scale, occlusions, and social group compositions containing between 1 and 8 individuals. Bounding-box annotations were established for a single target class (\"Isaac\"), while non-target individuals were deliberately maintained as unannotated background elements to penalize false-positive identity attribution. Model training was conducted on the Ultralytics cloud infrastructure utilizing transfer learning from the YOLO26n (nano) architectural baseline at a standardized input resolution of 640 × 640 pixels.")
+    add_p("Two primary training iterations were executed and systematically contrasted: Run 1 (\"isaacimage\"), serving as the baseline, and Run 2 (\"v2-707imgs\"), incorporating the comprehensive 707-image corpus and advanced multi-person context. Quantitative benchmarking demonstrated substantial performance gains in Run 2 across all primary computer vision evaluation metrics: Precision increased from 69.7% to 88.1% (+18.4%), Recall rose from 60.3% to 85.1% (+24.8%), Mean Average Precision at 0.50 IoU (mAP50) advanced from 68.3% to 88.4% (+20.1%), and mAP50-95 surged from 29.2% to 47.9% (+18.7%). Comprehensive diagnostic curve analysis—encompassing precision-recall (PR) trajectories, F1-confidence profiles, and confusion matrices—confirmed that the model achieved robust convergence with minimal background false alarms.")
+    add_p("To translate theoretical performance into industrial practice, the validated weights were deployed to an Ultralytics managed Cloud Run endpoint situated in the London (UK) region. An asynchronous REST API inference gateway was engineered utilizing FastAPI and deployed onto Vercel serverless cloud infrastructure, incorporating server-side Pillow image optimization to guarantee sub-second latency and circumvent payload constraints. Dual production client interfaces were developed: an interactive responsive web application featuring real-time webcam inference and history inspection, and a native cross-platform mobile application developed with React Native and Expo (SDK 58.0.0). Real-world field evaluations affirmed that the system achieves rapid, highly reliable identity discrimination across diverse operational environments, satisfying all objectives established for this final-year Industrial Software Engineering assessment.")
+
+    doc.add_page_break()
+
+    # 5.3 LIST OF FIGURES
     add_h1("List of Figures")
     p_lof = doc.add_paragraph()
     p_lof.paragraph_format.space_after = Pt(12)
@@ -551,7 +519,7 @@ def generate_report():
     r_lof._r.append(fld3)
     doc.add_page_break()
 
-    # 5.6 LIST OF TABLES
+    # 5.4 LIST OF TABLES
     add_h1("List of Tables")
     p_lot = doc.add_paragraph()
     p_lot.paragraph_format.space_after = Pt(12)
@@ -593,7 +561,7 @@ def generate_report():
     r_lot._r.append(fld3)
     doc.add_page_break()
 
-    # 5.7 LIST OF ABBREVIATIONS
+    # 5.5 LIST OF ABBREVIATIONS
     add_h1("List of Abbreviations")
     add_p("The standard acronyms, mathematical symbols, and technical abbreviations utilized throughout this project report are summarized below:")
 
@@ -617,8 +585,7 @@ def generate_report():
         ("APK", "Android Package Kit (Standalone Android Application Format)"),
         ("SDK", "Software Development Kit"),
         ("EAS", "Expo Application Services (Cloud Build & Update Infrastructure)"),
-        ("FESAC", "Faculty of Engineering and Applied Computing"),
-        ("PUC", "Pentecost University College, Ghana"),
+        ("PU", "Pentecost University, Ghana"),
         ("PIL", "Python Imaging Library (Pillow)"),
         ("PANet", "Path Aggregation Network"),
         ("DFL", "Distribution Focal Loss"),
@@ -645,7 +612,6 @@ def generate_report():
     pg_num2 = parse_xml(r'<w:pgNumType %s w:fmt="decimal" w:start="1"/>' % nsdecls('w'))
     sec2._sectPr.append(pg_num2)
 
-    # Running Header with Short Report Title
     sec2.header.is_linked_to_previous = False
     h_p = sec2.header.paragraphs[0]
     h_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
@@ -654,7 +620,6 @@ def generate_report():
     r_hdr.font.size = Pt(9)
     r_hdr.font.color.rgb = RGBColor(100, 100, 100)
 
-    # Footer for Arabic Numerals
     sec2.footer.is_linked_to_previous = False
     footer2 = sec2.footer
     f_p2 = footer2.paragraphs[0]
@@ -672,7 +637,7 @@ def generate_report():
 
     add_h2("1.1 Background of the Study")
     add_p("The rapid evolution of computer vision (CV) and deep learning (DL) over the past decade has fundamentally altered how computational systems perceive, interpret, and interact with the physical visual world. Object detection represents one of the foundational cornerstones of modern computer vision, synthesizing the dual challenges of object classification (determining what is present in an image) and spatial localization (determining precisely where the object resides through bounding coordinates). While generic object detection models—frequently trained on expansive benchmark datasets such as Microsoft Common Objects in Context (MS COCO) or Pascal VOC—excel at identifying broad visual categories such as \"person\", \"car\", or \"chair\", they remain intrinsically incapable of fine-grained identity discrimination. In standard computer vision benchmarks, every human subject is uniformly assigned the generic semantic label \"person\".")
-    add_p("In contemporary industrial, educational, and security environments, however, visual automation demands a significantly higher level of granularity. Institutions increasingly require automated computer vision systems capable of isolating, identifying, and verifying specific individual identities in dynamic, real-time visual feeds. At Pentecost University College (PUC), Ghana, the Final Year curriculum in Industrial Software Engineering stresses the rigorous conceptualization, design, implementation, and deployment of applied artificial intelligence systems that address tangible practical requirements. This individual assessment project is situated within this academic imperative, focusing on the engineering of an end-to-end, real-time visual object detection and recognition system specifically trained to detect and recognize the author (\"Isaac\") while rejecting or ignoring non-target individuals in complex real-world social environments.")
+    add_p("In contemporary industrial, educational, and security environments, however, visual automation demands a significantly higher level of granularity. Institutions increasingly require automated computer vision systems capable of isolating, identifying, and verifying specific individual identities in dynamic, real-time visual feeds. At Pentecost University, Ghana, the Final Year curriculum in Industrial Software Engineering stresses the rigorous conceptualization, design, implementation, and deployment of applied artificial intelligence systems that address tangible practical requirements. This individual assessment project is situated within this academic imperative, focusing on the engineering of an end-to-end, real-time visual object detection and recognition system specifically trained to detect and recognize the author (\"Isaac\") while rejecting or ignoring non-target individuals in complex real-world social environments.")
 
     add_h2("1.2 Problem Statement")
     add_p("Conventional biometric authentication systems, such as facial recognition gateways, predominantly rely upon constrained capture environments. Such frameworks frequently require cooperative human subjects positioned directly in front of high-resolution sensor arrays under uniform illumination, neutral facial expressions, and devoid of background clutter. When deployed into unconstrained real-world settings—such as crowded lecture halls, multi-person collaborative project workspaces, outdoor university courtyards, or variable illumination environments—traditional biometric algorithms exhibit catastrophic performance degradation.")
@@ -699,7 +664,7 @@ def generate_report():
     add_p("3. Severe Visual Occlusion: Extreme visual obstructions where more than 70% of the target subject's facial and bodily features are masked or obscured inevitably introduce classification uncertainty.")
 
     add_h2("1.5 Significance of the Study")
-    add_p("This project carries profound academic, practical, and pedagogical significance. From an academic perspective, it demonstrates the viability of applying advanced one-stage object detection architectures—traditionally reserved for generalized object categories—to fine-grained personal visual identity verification in unconstrained social scenes. Pedagogically, it serves as a capstone demonstration of the software engineering competencies cultivated within the Faculty of Engineering and Applied Computing at Pentecost University College, bridging theoretical convolutional neural network concepts with modern cloud microservice architecture and mobile application engineering.")
+    add_p("This project carries profound academic, practical, and pedagogical significance. From an academic perspective, it demonstrates the viability of applying advanced one-stage object detection architectures—traditionally reserved for generalized object categories—to fine-grained personal visual identity verification in unconstrained social scenes. Pedagogically, it serves as a capstone demonstration of the software engineering competencies cultivated at Pentecost University, bridging theoretical convolutional neural network concepts with modern cloud microservice architecture and mobile application engineering.")
     add_p("Practically, the system architecture developed herein provides a foundational blueprint for contactless university campus access control, automated lecture hall attendance logging, smart surveillance, and personalized human-robot interaction systems tailored to institutional environments across Ghana and sub-Saharan Africa.")
 
     add_h2("1.6 Report Organization")
@@ -838,7 +803,7 @@ def generate_report():
     add_p("The foundation of any machine learning model resides in the quality, diversity, and integrity of its training corpus. To satisfy the academic requirements of this course—which mandated a minimum dataset of 500 labeled images—a comprehensive data acquisition campaign was conducted. A total of 707 distinct photographic images were collected over several weeks, specifically curated to capture Isaac Nkansah across realistic, unconstrained daily operational contexts.")
     add_p("To avoid dataset bias and guarantee environmental invariance, photographic sessions were structured across multiple distinct visual dimensions:")
     add_p("1. Solo Portraits: Close-up and medium-range photographs capturing variations in facial expression, head yaw/pitch/roll angles, eye gaze directions, and subtle appearance changes (e.g., slight facial hair variations, prescription eyewear, and diverse clothing styles).")
-    add_p("2. Environmental and Illumination Diversity: Photographs were acquired across diverse real-world university settings at Pentecost University College, including indoor fluorescent lecture halls, computer laboratories with screen glare, shaded campus corridors, direct outdoor equatorial sunlight, and low-light evening environments.")
+    add_p("2. Environmental and Illumination Diversity: Photographs were acquired across diverse real-world university settings at Pentecost University, including indoor fluorescent lecture halls, computer laboratories with screen glare, shaded campus corridors, direct outdoor equatorial sunlight, and low-light evening environments.")
     add_p("3. Multi-Person Social Compositions: A critical innovation within this dataset was the deliberate inclusion of complex group photographs featuring the author alongside academic peers, classmates, and campus visitors. Group sizes ranged systematically from small pairs (2 persons) to large group scenes containing 3, 4, 5, 6, 7, and 8 individuals.")
 
     add_h2("4.2 Data Preparation, Cleaning, and Annotation Protocol")
@@ -1066,7 +1031,7 @@ def generate_report():
 
     add_h2("9.1 Summary of Contributions and Achievements")
     add_p("This final-year Individual Assessment project has successfully demonstrated the design, training, optimization, and multi-platform deployment of a custom deep learning object detection system capable of real-time personal recognition. Utilizing the cutting-edge Ultralytics YOLO26n architecture, the system achieved exceptional empirical benchmarks on the enhanced Run 2 dataset (707 images): 88.1% Precision, 85.1% Recall, 88.4% mAP50, and 47.9% mAP50-95.")
-    add_p("Beyond offline model metrics, the project delivered a complete, fully integrated cloud software ecosystem encompassing an active Ultralytics Cloud Run deployment in London (UK), a high-performance asynchronous FastAPI gateway on Vercel, a responsive web dashboard with live webcam and history inspection capabilities, and a cross-platform React Native mobile application for Android and iOS. The project stands as a rigorous, tangible testament to the software engineering standards championed at Pentecost University College.")
+    add_p("Beyond offline model metrics, the project delivered a complete, fully integrated cloud software ecosystem encompassing an active Ultralytics Cloud Run deployment in London (UK), a high-performance asynchronous FastAPI gateway on Vercel, a responsive web dashboard with live webcam and history inspection capabilities, and a cross-platform React Native mobile application for Android and iOS. The project stands as a rigorous, tangible testament to the software engineering standards championed at Pentecost University.")
 
     add_h2("9.2 Recommendations for Future Research and Development")
     add_p("Building upon the solid foundation established in this report, the following technical extensions are recommended for future academic cohorts and industrial deployments:")
@@ -1100,7 +1065,7 @@ def generate_report():
         "[14] Meta Platforms Inc., \"React Native: A Framework for Building Native Apps Using React,\" 2024. [Online]. Available: https://reactnative.dev",
         "[15] 650 Industries Inc., \"Expo Framework and EAS Cloud Services Documentation (SDK 58),\" 2024. [Online]. Available: https://docs.expo.dev",
         "[16] A. Clark and Contributors, \"Pillow: The Friendly Python Imaging Library Fork (PIL),\" 2024. [Online]. Available: https://python-pillow.org",
-        "[17] Pentecost University College (PUC), \"Final Year Project Guidelines: Department of Information Technology and Software Engineering,\" Faculty of Engineering and Applied Computing (FESAC), Accra, Ghana, 2025/2026."
+        "[17] Pentecost University, \"Final Year Project Guidelines: Department of Information Technology and Software Engineering,\" Accra, Ghana, 2025/2026."
     ]
 
     for ref in references:
@@ -1268,7 +1233,7 @@ def generate_report():
     code_snippet = (
 """# ==============================================================================
 # FASTAPI SERVERLESS INFERENCE GATEWAY (api/index.py)
-# Author: Isaac Nkansah • Pentecost University College (PUC)
+# Author: Isaac Nkansah • Pentecost University
 # Connects Web & Mobile Clients to Ultralytics Cloud Run YOLO Inference API
 # ==============================================================================
 
@@ -1445,12 +1410,10 @@ async def predict(
         col_widths=[1.5, 1.2, 2.0, 1.57]
     )
 
-    # -------------------------------------------------------------
-    # Save the Final Document
-    # -------------------------------------------------------------
+    # Save Document
     output_filename = "Isaac_Nkansah_AI_IA_Report.docx"
     doc.save(output_filename)
-    print(f"Report successfully generated and saved to {output_filename}!")
+    print(f"Report successfully updated and saved to {output_filename}!")
 
 if __name__ == "__main__":
     generate_report()
