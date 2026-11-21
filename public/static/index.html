@@ -57,8 +57,8 @@
 
         <!-- Tab 1: Upload View -->
         <div id="view-upload" class="tab-view active">
-          <div id="drop-zone" class="drop-zone">
-            <input type="file" id="file-input" accept="image/*" class="file-input">
+          <label for="file-input" id="drop-zone" class="drop-zone">
+            <input type="file" id="file-input" accept="image/*" class="file-input-native">
             <div class="drop-prompt">
               <div class="upload-icon-wrapper">
                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
@@ -66,7 +66,7 @@
               <p class="drop-title">Tap to choose photo or <span class="highlight">browse</span></p>
               <p class="drop-hint">Supports Camera Photos, JPEG, PNG, WebP, HEIC</p>
             </div>
-          </div>
+          </label>
           <div id="selected-file-info" class="selected-file-info hidden">
             <div class="selected-file-header">
               <span class="file-name" id="file-name-display">image.jpg</span>

@@ -35,49 +35,56 @@ export async function checkServerHealth(customUrl = null) {
 }
 
 /**
- * Upload image and run YOLO detection via the inference endpoint.
+ * Upload image and run YOLO detection via JSON base64.
+ * Completely eliminates React Native iOS "Unsupported FormDataPart implementation" errors.
+ * 
  * @param {string} imageUri Local URI of image from camera or gallery
  * @param {number} confidence Confidence threshold between 0.05 and 0.95
+ * @param {string|null} base64Data Optional pre-read base64 string from ImagePicker
  * @param {string|null} customUrl Optional custom API base URL
  */
-export async function runYoloDetection(imageUri, confidence = 0.25, customUrl = null) {
+export async function runYoloDetection(imageUri, confidence = 0.25, base64Data = null, customUrl = null) {
   const baseUrl = customUrl || CONFIG.API_BASE_URL;
   const endpoint = `${baseUrl}${CONFIG.ENDPOINTS.PREDICT}`;
 
-  const formData = new FormData();
-
-  // Extract file name or create default
-  const uriParts = imageUri.split("/");
-  const fileName = uriParts[uriParts.length - 1] || "capture.jpg";
-
-  // Determine mime type
-  let mimeType = "image/jpeg";
-  if (fileName.toLowerCase().endsWith(".png")) mimeType = "image/png";
-  if (fileName.toLowerCase().endsWith(".webp")) mimeType = "image/webp";
-
-  formData.append("file", {
-    uri: imageUri,
-    name: fileName,
-    type: mimeType
-  });
-  formData.append("conf", String(confidence));
-
   try {
+    let base64 = base64Data;
+
+    // If base64 wasn't provided directly by image picker, read it from disk
+    if (!base64 && imageUri) {
+      try {
+        const FileSystem = await import("expo-file-system/legacy");
+        base64 = await FileSystem.readAsStringAsync(imageUri, {
+          encoding: "base64"
+        });
+      } catch (readErr) {
+        console.warn("Could not read file via FileSystem:", readErr);
+      }
+    }
+
+    if (!base64) {
+      throw new Error("Unable to read image data. Please select another photo.");
+    }
+
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for remote cloud inference
 
     const response = await fetch(endpoint, {
       method: "POST",
-      body: formData,
       headers: {
-        Accept: "application/json"
+        "Content-Type": "application/json",
+        "Accept": "application/json"
       },
+      body: JSON.stringify({
+        image: base64,
+        conf: confidence
+      }),
       signal: controller.signal
     });
     clearTimeout(timeoutId);
 
-    const contentType = response.headers.get("content-type") || "";
     let data;
+    const contentType = response.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       data = await response.json();
     } else {
@@ -103,7 +110,7 @@ export async function runYoloDetection(imageUri, confidence = 0.25, customUrl = 
   } catch (error) {
     return {
       success: false,
-      error: error.name === "AbortError" ? "Detection request timed out." : error.message
+      error: error.name === "AbortError" ? "Detection request timed out. Please try again." : error.message
     };
   }
 }

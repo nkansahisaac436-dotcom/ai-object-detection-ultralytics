@@ -27,6 +27,7 @@ export default function App() {
   const [refreshing, setRefreshing] = useState(false);
 
   const [selectedImageUri, setSelectedImageUri] = useState(null);
+  const [selectedImageBase64, setSelectedImageBase64] = useState(null);
   const [annotatedImageUri, setAnnotatedImageUri] = useState(null);
   const [confidence, setConfidence] = useState(CONFIG.DEFAULT_CONFIDENCE);
   const [loading, setLoading] = useState(false);
@@ -77,12 +78,14 @@ export default function App() {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
-        quality: 0.85,
+        quality: 0.75,
+        base64: true
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const uri = result.assets[0].uri;
-        setSelectedImageUri(uri);
+        const asset = result.assets[0];
+        setSelectedImageUri(asset.uri);
+        setSelectedImageBase64(asset.base64 || null);
         setAnnotatedImageUri(null);
         setDetectionResults(null);
       }
@@ -107,12 +110,14 @@ export default function App() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
-        quality: 0.85,
+        quality: 0.75,
+        base64: true
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const uri = result.assets[0].uri;
-        setSelectedImageUri(uri);
+        const asset = result.assets[0];
+        setSelectedImageUri(asset.uri);
+        setSelectedImageBase64(asset.base64 || null);
         setAnnotatedImageUri(null);
         setDetectionResults(null);
       }
@@ -131,7 +136,7 @@ export default function App() {
     setLoading(true);
     setBannerError(null);
 
-    const res = await runYoloDetection(selectedImageUri, confidence);
+    const res = await runYoloDetection(selectedImageUri, confidence, selectedImageBase64);
     setLoading(false);
 
     if (res.success) {
@@ -146,6 +151,7 @@ export default function App() {
 
   const handleClear = () => {
     setSelectedImageUri(null);
+    setSelectedImageBase64(null);
     setAnnotatedImageUri(null);
     setDetectionResults(null);
     setBannerError(null);

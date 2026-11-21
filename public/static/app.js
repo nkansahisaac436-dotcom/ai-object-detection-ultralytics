@@ -118,16 +118,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // 3. File Upload & Drag-and-Drop
-  dropZone.addEventListener("click", (e) => {
-    if (e.target !== fileInput) {
-      fileInput.click();
-    }
-  });
-
-  fileInput.addEventListener("click", (e) => {
-    e.stopPropagation();
-  });
-
   dropZone.addEventListener("dragover", (e) => {
     e.preventDefault();
     dropZone.classList.add("dragover");
@@ -154,20 +144,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function handleSelectedFile(file) {
     if (!file) return;
 
-    // Flexible mobile check: accept any image MIME type or valid image extensions
-    const isImage = (file.type && file.type.startsWith("image/")) || 
-                    /\.(jpe?g|png|webp|heic|heif|bmp|gif)$/i.test(file.name);
-    if (!isImage) {
-      showBanner("Please select a valid image photo (JPEG, PNG, WebP, HEIC, etc.).", "danger");
-      return;
-    }
-
-    // Size limit (15 MB max for high-res mobile photos)
-    if (file.size > 15 * 1024 * 1024) {
-      showBanner(`File is too large (${(file.size / (1024 * 1024)).toFixed(1)} MB). Maximum allowed size is 15 MB.`, "danger");
-      return;
-    }
-
     hideBanner();
     currentFile = file;
     fileNameDisplay.textContent = `${file.name || "photo.jpg"} (${(file.size / 1024).toFixed(0)} KB)`;
@@ -175,23 +151,54 @@ document.addEventListener("DOMContentLoaded", () => {
     dropZone.classList.add("hidden");
     btnPredict.disabled = false;
 
-    // Load preview using FileReader
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const dataUrl = evt.target.result;
-      // Show immediate thumbnail in the input section on mobile
-      if (fileThumbImg) {
-        fileThumbImg.src = dataUrl;
+    // Use native ObjectURL for instant rendering on mobile
+    const objectUrl = URL.createObjectURL(file);
+    if (fileThumbImg) {
+      fileThumbImg.src = objectUrl;
+    }
+    imgOriginal.src = objectUrl;
+    imgOriginal.classList.remove("hidden");
+    origPlaceholder.classList.add("hidden");
+
+    // Convert & optimize to JPEG to support iPhone HEIC and speed up uploads
+    const tempImg = new Image();
+    tempImg.onload = () => {
+      try {
+        const maxDim = 1600;
+        let w = tempImg.naturalWidth || tempImg.width;
+        let h = tempImg.naturalHeight || tempImg.height;
+        let scale = 1;
+        if (w > maxDim || h > maxDim) {
+          scale = maxDim / Math.max(w, h);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(w * scale);
+        canvas.height = Math.round(h * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(tempImg, 0, 0, canvas.width, canvas.height);
+
+        const jpegDataUrl = canvas.toDataURL("image/jpeg", 0.90);
+        if (fileThumbImg) fileThumbImg.src = jpegDataUrl;
+        imgOriginal.src = jpegDataUrl;
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            currentFile = blob;
+          }
+        }, "image/jpeg", 0.90);
+      } catch (err) {
+        console.warn("Canvas conversion fallback:", err);
       }
-      // Also update side-by-side view
-      imgOriginal.src = dataUrl;
-      imgOriginal.classList.remove("hidden");
-      origPlaceholder.classList.add("hidden");
     };
-    reader.onerror = () => {
-      showBanner("Could not load image preview. Please try another photo.", "danger");
+    tempImg.onerror = () => {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        if (fileThumbImg) fileThumbImg.src = evt.target.result;
+        imgOriginal.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
     };
-    reader.readAsDataURL(file);
+    tempImg.src = objectUrl;
 
     // Reset previous annotated results
     resetOutputResults();
@@ -206,9 +213,6 @@ document.addEventListener("DOMContentLoaded", () => {
     btnPredict.disabled = true;
     imgOriginal.src = "";
     imgOriginal.classList.add("hidden");
-    origPlaceholder.classList.remove("hidden");
-    resetOutputResults();
-  });
     origPlaceholder.classList.remove("hidden");
     resetOutputResults();
   });
@@ -292,7 +296,7 @@ document.addEventListener("DOMContentLoaded", () => {
     hideBanner();
 
     const formData = new FormData();
-    formData.append("file", currentFile);
+    formData.append("file", currentFile, currentFile.name || "upload.jpg");
     formData.append("conf", confSlider.value);
 
     try {

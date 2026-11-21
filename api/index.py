@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 
 import httpx
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, status, Response
+from fastapi import FastAPI, Request, File, UploadFile, Form, HTTPException, status, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -117,34 +117,79 @@ def health_check() -> Dict[str, Any]:
 @app.post("/predict")
 @app.post("/api/predict")
 async def predict(
-    file: UploadFile = File(..., description="Image file (JPEG, PNG, or WebP)"),
-    conf: float = Form(0.25, description="Confidence threshold between 0.05 and 0.95")
+    request: Request,
+    file: Optional[UploadFile] = File(None),
+    conf: Optional[float] = Form(None)
 ):
-    """Run prediction via Ultralytics Cloud Run endpoint."""
+    """Run prediction via Ultralytics Cloud Run endpoint, supporting both multipart form-data and JSON base64."""
     try:
-        # 1. Validate file format
-        allowed_extensions = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".bmp", ".tiff"}
-        file_ext = Path(file.filename or "").suffix.lower()
-        content_type = (file.content_type or "").lower()
+        content_type = request.headers.get("content-type", "").lower()
+        contents = b""
+        conf_val = 0.25
+        filename = "image.jpg"
+        image_mime = "image/jpeg"
 
-        if file_ext not in allowed_extensions and not content_type.startswith("image/"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid file type. Please upload a valid image (JPEG, PNG, WebP, or HEIC)."
-            )
+        if "application/json" in content_type:
+            try:
+                body = await request.json()
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid JSON body")
 
-        # 2. Validate file size
-        contents = await file.read()
+            raw_b64 = body.get("image") or body.get("file") or ""
+            if not raw_b64:
+                raise HTTPException(status_code=400, detail="Missing 'image' base64 data in JSON request.")
+
+            if "," in raw_b64:
+                prefix, raw_b64 = raw_b64.split(",", 1)
+                if "image/png" in prefix:
+                    image_mime = "image/png"
+                    filename = "image.png"
+                elif "image/webp" in prefix:
+                    image_mime = "image/webp"
+                    filename = "image.webp"
+
+            try:
+                contents = base64.b64decode(raw_b64)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Invalid base64 image data: {str(e)}")
+
+            if "conf" in body:
+                try:
+                    conf_val = float(body["conf"])
+                except (ValueError, TypeError):
+                    conf_val = 0.25
+        else:
+            # Multipart form-data upload
+            if file is not None:
+                contents = await file.read()
+                filename = file.filename or "image.jpg"
+                image_mime = file.content_type or "image/jpeg"
+                if conf is not None:
+                    conf_val = float(conf)
+            else:
+                form = await request.form()
+                uploaded = form.get("file")
+                if not uploaded:
+                    raise HTTPException(status_code=400, detail="No file provided in form data.")
+                contents = await uploaded.read()
+                filename = getattr(uploaded, "filename", "image.jpg") or "image.jpg"
+                image_mime = getattr(uploaded, "content_type", "image/jpeg") or "image/jpeg"
+                if "conf" in form:
+                    try:
+                        conf_val = float(form.get("conf"))
+                    except (ValueError, TypeError):
+                        conf_val = 0.25
+
+        if len(contents) == 0:
+            raise HTTPException(status_code=400, detail="Uploaded image is empty.")
+
         if len(contents) > MAX_FILE_SIZE:
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=f"File size exceeds 10 MB limit ({len(contents) / (1024*1024):.2f} MB received)."
             )
 
-        if len(contents) == 0:
-            raise HTTPException(status_code=400, detail="Uploaded file is empty.")
-
-        conf_clamped = max(0.05, min(0.95, float(conf)))
+        conf_clamped = max(0.05, min(0.95, float(conf_val)))
 
         # 3. Get image dimensions
         try:
@@ -158,7 +203,7 @@ async def predict(
             "x-api-key": HUB_API_KEY,
             "Authorization": f"Bearer {HUB_API_KEY}"
         }
-        files = {"file": (file.filename or "image.jpg", contents, content_type or "image/jpeg")}
+        files = {"file": (filename, contents, image_mime)}
         data = {"conf": str(conf_clamped)}
 
         start_time = time.perf_counter()

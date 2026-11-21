@@ -292,7 +292,8 @@ body {
   background: rgba(79, 70, 229, 0.08);
 }
 
-.file-input {
+.file-input,
+.file-input-native {
   position: absolute;
   top: 0;
   left: 0;
@@ -300,6 +301,15 @@ body {
   height: 100%;
   opacity: 0;
   cursor: pointer;
+  z-index: 20;
+}
+
+.drop-prompt {
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .upload-icon-wrapper {
