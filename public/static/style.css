@@ -326,14 +326,40 @@ body {
 
 .selected-file-info {
   display: flex;
+  flex-direction: column;
+  background: #0d1424;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  font-size: 0.85rem;
+  margin-top: 6px;
+}
+
+.selected-file-header {
+  display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 10px;
-  background: #0d1424;
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--card-border);
-  font-size: 0.82rem;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.file-thumb-container {
+  width: 100%;
+  max-height: 220px;
+  background: #090d16;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.file-thumb-img {
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
 }
 
 .file-name {

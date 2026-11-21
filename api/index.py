@@ -123,14 +123,14 @@ async def predict(
     """Run prediction via Ultralytics Cloud Run endpoint."""
     try:
         # 1. Validate file format
-        allowed_extensions = {".jpg", ".jpeg", ".png", ".webp"}
+        allowed_extensions = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".bmp", ".tiff"}
         file_ext = Path(file.filename or "").suffix.lower()
         content_type = (file.content_type or "").lower()
 
         if file_ext not in allowed_extensions and not content_type.startswith("image/"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid file type. Please upload a valid image (JPEG, PNG, or WebP)."
+                detail="Invalid file type. Please upload a valid image (JPEG, PNG, WebP, or HEIC)."
             )
 
         # 2. Validate file size

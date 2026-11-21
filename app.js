@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const fileInput = document.getElementById("file-input");
   const selectedFileInfo = document.getElementById("selected-file-info");
   const fileNameDisplay = document.getElementById("file-name-display");
+  const fileThumbImg = document.getElementById("file-thumb-img");
   const btnClearFile = document.getElementById("btn-clear-file");
 
   // Elements - Webcam
@@ -117,7 +118,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // 3. File Upload & Drag-and-Drop
-  dropZone.addEventListener("click", () => fileInput.click());
+  dropZone.addEventListener("click", (e) => {
+    if (e.target !== fileInput) {
+      fileInput.click();
+    }
+  });
+
+  fileInput.addEventListener("click", (e) => {
+    e.stopPropagation();
+  });
 
   dropZone.addEventListener("dragover", (e) => {
     e.preventDefault();
@@ -143,31 +152,44 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function handleSelectedFile(file) {
-    // Validate file type
-    const validTypes = ["image/jpeg", "image/png", "image/webp"];
-    if (!validTypes.includes(file.type) && !/\.(jpe?g|png|webp)$/i.test(file.name)) {
-      showBanner("Invalid file type. Please select a JPG, PNG, or WebP image.", "danger");
+    if (!file) return;
+
+    // Flexible mobile check: accept any image MIME type or valid image extensions
+    const isImage = (file.type && file.type.startsWith("image/")) || 
+                    /\.(jpe?g|png|webp|heic|heif|bmp|gif)$/i.test(file.name);
+    if (!isImage) {
+      showBanner("Please select a valid image photo (JPEG, PNG, WebP, HEIC, etc.).", "danger");
       return;
     }
 
-    // Validate size (10 MB max)
-    if (file.size > 10 * 1024 * 1024) {
-      showBanner(`File is too large (${(file.size / (1024 * 1024)).toFixed(1)} MB). Maximum allowed size is 10 MB.`, "danger");
+    // Size limit (15 MB max for high-res mobile photos)
+    if (file.size > 15 * 1024 * 1024) {
+      showBanner(`File is too large (${(file.size / (1024 * 1024)).toFixed(1)} MB). Maximum allowed size is 15 MB.`, "danger");
       return;
     }
 
+    hideBanner();
     currentFile = file;
-    fileNameDisplay.textContent = `${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
+    fileNameDisplay.textContent = `${file.name || "photo.jpg"} (${(file.size / 1024).toFixed(0)} KB)`;
     selectedFileInfo.classList.remove("hidden");
     dropZone.classList.add("hidden");
     btnPredict.disabled = false;
 
-    // Preview original image
+    // Load preview using FileReader
     const reader = new FileReader();
     reader.onload = (evt) => {
-      imgOriginal.src = evt.target.result;
+      const dataUrl = evt.target.result;
+      // Show immediate thumbnail in the input section on mobile
+      if (fileThumbImg) {
+        fileThumbImg.src = dataUrl;
+      }
+      // Also update side-by-side view
+      imgOriginal.src = dataUrl;
       imgOriginal.classList.remove("hidden");
       origPlaceholder.classList.add("hidden");
+    };
+    reader.onerror = () => {
+      showBanner("Could not load image preview. Please try another photo.", "danger");
     };
     reader.readAsDataURL(file);
 
@@ -178,11 +200,15 @@ document.addEventListener("DOMContentLoaded", () => {
   btnClearFile.addEventListener("click", () => {
     currentFile = null;
     fileInput.value = "";
+    if (fileThumbImg) fileThumbImg.src = "";
     selectedFileInfo.classList.add("hidden");
     dropZone.classList.remove("hidden");
     btnPredict.disabled = true;
     imgOriginal.src = "";
     imgOriginal.classList.add("hidden");
+    origPlaceholder.classList.remove("hidden");
+    resetOutputResults();
+  });
     origPlaceholder.classList.remove("hidden");
     resetOutputResults();
   });
@@ -291,6 +317,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       displayResults(data);
+      // On mobile devices, smoothly scroll down to display results
+      if (window.innerWidth <= 950) {
+        setTimeout(() => {
+          document.querySelector(".results-section")?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      }
     } catch (err) {
       console.error("Predict error:", err);
       showBanner(`⚠️ Network or server error: ${err.message}`, "danger");
