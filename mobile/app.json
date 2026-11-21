@@ -2,6 +2,7 @@
   "expo": {
     "name": "Isaac YOLO Detection",
     "slug": "ai-object-detection-mobile",
+    "owner": "heaven_bound",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
@@ -26,6 +27,9 @@
           "cameraPermission": "The app needs access to your camera to capture live photos for detection."
         }
       ]
-    ]
+    ],
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    }
   }
 }

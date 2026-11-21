@@ -54,6 +54,18 @@ The app will load on your physical phone in seconds!
 
 ---
 
+## ☁️ Run Anywhere Without Being Close to PC (EAS Cloud Updates)
+
+You can publish this project to your Expo account (`@heaven_bound`) so it appears directly under your **Projects** tab in the Expo Go app on your phone:
+
+```bash
+cd mobile
+npx eas-cli update --auto
+```
+Once published, simply open the **Expo Go** app on your phone, navigate to your **Projects** screen under `@heaven_bound`, and tap **`ai-object-detection-mobile`** to run it from anywhere in the world!
+
+---
+
 ## 📁 Mobile Directory Structure
 ```
 mobile/
