@@ -1,8 +1,13 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { COLORS, SPACING, RADIUS } from "../styles/theme";
 
-export default function Header({ status = "loading", statusMessage = "Checking server..." }) {
+export default function Header({
+  status = "loading",
+  statusMessage = "Checking server...",
+  historyCount = 0,
+  onOpenHistory
+}) {
   const getBadgeStyle = () => {
     switch (status) {
       case "online":
@@ -28,11 +33,19 @@ export default function Header({ status = "loading", statusMessage = "Checking s
         </View>
       </View>
 
-      <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
-        <View style={[styles.statusDot, { backgroundColor: badge.dot }]} />
-        <Text style={[styles.statusText, { color: badge.text }]} numberOfLines={1}>
-          {statusMessage}
-        </Text>
+      <View style={styles.bottomRow}>
+        <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
+          <View style={[styles.statusDot, { backgroundColor: badge.dot }]} />
+          <Text style={[styles.statusText, { color: badge.text }]} numberOfLines={1}>
+            {statusMessage}
+          </Text>
+        </View>
+
+        {onOpenHistory && (
+          <TouchableOpacity style={styles.btnHistory} onPress={onOpenHistory}>
+            <Text style={styles.btnHistoryText}>🕒 History ({historyCount})</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -79,23 +92,40 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: 2,
   },
+  bottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
-    paddingHorizontal: SPACING.sm + 2,
-    paddingVertical: 4,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 5,
     borderRadius: RADIUS.full,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    flex: 1,
+    marginRight: SPACING.sm,
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 7,
+    height: 7,
+    borderRadius: RADIUS.full,
     marginRight: 6,
   },
   statusText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  btnHistory: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: RADIUS.full,
+    backgroundColor: "rgba(79, 70, 229, 0.15)",
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  btnHistoryText: {
+    color: COLORS.primaryLight,
     fontSize: 12,
     fontWeight: "600",
   },

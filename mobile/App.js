@@ -16,6 +16,7 @@ import Header from "./src/components/Header";
 import ConfidenceSlider from "./src/components/ConfidenceSlider";
 import ImagePreview from "./src/components/ImagePreview";
 import DetectionsList from "./src/components/DetectionsList";
+import HistoryModal from "./src/components/HistoryModal";
 import { checkServerHealth, runYoloDetection } from "./src/services/api";
 import { CONFIG } from "./src/config";
 import { COLORS, SPACING, RADIUS } from "./src/styles/theme";
@@ -33,6 +34,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [detectionResults, setDetectionResults] = useState(null);
   const [bannerError, setBannerError] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
 
   // Initial Health Check
   useEffect(() => {
@@ -144,9 +147,46 @@ export default function App() {
       if (res.data.annotatedImage) {
         setAnnotatedImageUri(res.data.annotatedImage);
       }
+
+      // Add to Session History
+      const historyItem = {
+        id: Date.now().toString(),
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        originalUri: selectedImageUri,
+        annotatedUri: res.data.annotatedImage,
+        confidence: confidence,
+        count: res.data.count,
+        detections: res.data.detections,
+        inferenceMs: res.data.inferenceMs
+      };
+      setHistory((prev) => [historyItem, ...prev.slice(0, 19)]);
     } else {
       setBannerError(res.error || "Failed to execute YOLO detection.");
     }
+  };
+
+  const handleSelectHistoryItem = (item) => {
+    setSelectedImageUri(item.originalUri);
+    setAnnotatedImageUri(item.annotatedUri);
+    setConfidence(item.confidence || CONFIG.DEFAULT_CONFIDENCE);
+    setDetectionResults({
+      count: item.count,
+      detections: item.detections || [],
+      inferenceMs: item.inferenceMs,
+      annotatedImage: item.annotatedUri
+    });
+    setHistoryModalVisible(false);
+  };
+
+  const handleClearHistory = () => {
+    Alert.alert(
+      "Clear History",
+      "Are you sure you want to remove all saved tested images?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Clear All", style: "destructive", onPress: () => setHistory([]) }
+      ]
+    );
   };
 
   const handleClear = () => {
@@ -162,7 +202,12 @@ export default function App() {
       <StatusBar style="light" />
 
       {/* Header */}
-      <Header status={serverStatus} statusMessage={serverMessage} />
+      <Header
+        status={serverStatus}
+        statusMessage={serverMessage}
+        historyCount={history.length}
+        onOpenHistory={() => setHistoryModalVisible(true)}
+      />
 
       <ScrollView
         style={styles.container}
@@ -240,6 +285,15 @@ export default function App() {
           <Text style={styles.footerSubtext}>Ultralytics YOLO Custom Detection • Isaac Recognition</Text>
         </View>
       </ScrollView>
+
+      {/* Detection History Modal */}
+      <HistoryModal
+        visible={historyModalVisible}
+        onClose={() => setHistoryModalVisible(false)}
+        history={history}
+        onSelectHistoryItem={handleSelectHistoryItem}
+        onClearHistory={handleClearHistory}
+      />
     </SafeAreaView>
   );
 }

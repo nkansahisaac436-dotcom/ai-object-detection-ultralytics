@@ -191,11 +191,26 @@ async def predict(
 
         conf_clamped = max(0.05, min(0.95, float(conf_val)))
 
-        # 3. Get image dimensions
+        # 3. Get image dimensions & optimize resolution for YOLO
         try:
             pil_img = Image.open(io.BytesIO(contents))
+            # Convert palette/alpha modes to standard RGB
+            if pil_img.mode in ("RGBA", "P"):
+                pil_img = pil_img.convert("RGB")
+
+            # Downscale if larger than 1280px to drastically speed up Cloud Run inference & prevent timeouts
+            max_dimension = 1280
+            if max(pil_img.size) > max_dimension:
+                pil_img.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
+                buf = io.BytesIO()
+                pil_img.save(buf, format="JPEG", quality=85)
+                contents = buf.getvalue()
+                filename = "image.jpg"
+                image_mime = "image/jpeg"
+
             img_width, img_height = pil_img.size
-        except Exception:
+        except Exception as e:
+            logger.warning(f"PIL optimization note: {e}")
             img_width, img_height = 0, 0
 
         # 4. Call Ultralytics Inference API
@@ -207,7 +222,7 @@ async def predict(
         data = {"conf": str(conf_clamped)}
 
         start_time = time.perf_counter()
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=15.0)) as client:
             try:
                 resp = await client.post(HUB_MODEL_URL, headers=headers, files=files, data=data)
                 resp.raise_for_status()

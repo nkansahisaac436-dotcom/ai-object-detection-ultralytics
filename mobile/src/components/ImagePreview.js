@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, Image, TouchableOpacity, ActivityIndicator, StyleSheet } from "react-native";
 import * as Sharing from "expo-sharing";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { COLORS, SPACING, RADIUS } from "../styles/theme";
 
 export default function ImagePreview({ originalUri, annotatedUri, loading, onClear }) {
@@ -86,7 +86,7 @@ export default function ImagePreview({ originalUri, annotatedUri, loading, onCle
       <View style={styles.actionRow}>
         {annotatedUri && (
           <TouchableOpacity style={styles.btnShare} onPress={handleShare}>
-            <Text style={styles.btnShareText}>📤 Share Detection</Text>
+            <Text style={styles.btnShareText}>💾 Save / Share Result</Text>
           </TouchableOpacity>
         )}
 

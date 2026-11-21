@@ -44,6 +44,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const metricConf = document.getElementById("metric-conf");
   const detectionsTbody = document.getElementById("detections-tbody");
 
+  // Elements - History
+  const btnToggleHistory = document.getElementById("btn-toggle-history");
+  const historyBadge = document.getElementById("history-badge");
+  const historyModal = document.getElementById("history-modal");
+  const historyList = document.getElementById("history-list");
+  const btnCloseHistory = document.getElementById("btn-close-history");
+  const btnCloseHistoryFooter = document.getElementById("btn-close-history-footer");
+  const btnClearWebHistory = document.getElementById("btn-clear-web-history");
+
   // Elements - System & Banners
   const systemStatusBadge = document.getElementById("system-status-badge");
   const statusText = document.getElementById("status-text");
@@ -56,6 +65,19 @@ document.addEventListener("DOMContentLoaded", () => {
   let webcamStream = null;
   let annotatedImageB64 = null;
   let modelAvailable = false;
+  let detectionHistory = [];
+
+  try {
+    const saved = localStorage.getItem("isaac_yolo_history");
+    if (saved) detectionHistory = JSON.parse(saved);
+  } catch (e) {
+    detectionHistory = [];
+  }
+  updateHistoryBadge();
+
+  function updateHistoryBadge() {
+    if (historyBadge) historyBadge.textContent = detectionHistory.length;
+  }
 
   // 1. Initial Health Check
   async function checkHealth() {
@@ -389,6 +411,28 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
       detectionsTbody.appendChild(tr);
     });
+
+    // Save to History
+    try {
+      const historyItem = {
+        id: Date.now().toString(),
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        originalSrc: imgOriginal.src,
+        annotatedSrc: data.annotated_image,
+        count: data.count || 0,
+        inferenceMs: data.inference_ms || 0,
+        imageWidth: data.image_width,
+        imageHeight: data.image_height,
+        detections: data.detections || [],
+        conf: confSlider.value
+      };
+      detectionHistory.unshift(historyItem);
+      if (detectionHistory.length > 25) detectionHistory.pop();
+      localStorage.setItem("isaac_yolo_history", JSON.stringify(detectionHistory));
+      updateHistoryBadge();
+    } catch (err) {
+      console.warn("History save note:", err);
+    }
   }
 
   function resetOutputResults() {
@@ -423,6 +467,148 @@ document.addEventListener("DOMContentLoaded", () => {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  // 9. Tested Images History Modal
+  if (btnToggleHistory) {
+    btnToggleHistory.addEventListener("click", openHistoryModal);
+  }
+  if (btnCloseHistory) {
+    btnCloseHistory.addEventListener("click", closeHistoryModal);
+  }
+  if (btnCloseHistoryFooter) {
+    btnCloseHistoryFooter.addEventListener("click", closeHistoryModal);
+  }
+  if (btnClearWebHistory) {
+    btnClearWebHistory.addEventListener("click", () => {
+      if (confirm("Clear all previously tested images?")) {
+        detectionHistory = [];
+        try { localStorage.removeItem("isaac_yolo_history"); } catch (e) {}
+        updateHistoryBadge();
+        renderHistoryList();
+      }
+    });
+  }
+
+  function openHistoryModal() {
+    renderHistoryList();
+    historyModal.classList.remove("hidden");
+  }
+
+  function closeHistoryModal() {
+    historyModal.classList.add("hidden");
+  }
+
+  function renderHistoryList() {
+    if (!historyList) return;
+    historyList.innerHTML = "";
+
+    if (detectionHistory.length === 0) {
+      historyList.innerHTML = `
+        <div class="history-empty">
+          <div class="history-empty-icon">📷</div>
+          <h4>No Tested Images Yet</h4>
+          <p>Run YOLO detection on any photo to save and review past results here.</p>
+        </div>
+      `;
+      return;
+    }
+
+    detectionHistory.forEach((item, idx) => {
+      const card = document.createElement("div");
+      card.className = "history-card";
+      const countText = item.count > 0 ? `${item.count} Detected` : "0 Found";
+      const confPct = Math.round(parseFloat(item.conf || 0.25) * 100);
+
+      card.innerHTML = `
+        <div class="history-thumb-wrap">
+          <img src="${item.annotatedSrc || item.originalSrc}" class="history-thumb" alt="Tested photo" />
+          <span class="history-badge-overlay">${countText}</span>
+        </div>
+        <div class="history-body">
+          <span class="history-time">#${detectionHistory.length - idx} • ${item.timestamp}</span>
+          <div class="history-meta">
+            <span>Threshold: <strong>${confPct}%</strong></span>
+            <span>Speed: <strong>${item.inferenceMs} ms</strong></span>
+          </div>
+          <div class="history-actions">
+            <button class="btn btn-primary btn-sm btn-restore-test">Restore</button>
+            <button class="btn btn-secondary btn-sm btn-download-test">Download</button>
+          </div>
+        </div>
+      `;
+
+      // Event listener for Restore
+      card.querySelector(".btn-restore-test").addEventListener("click", () => {
+        restoreHistoryItem(item);
+        closeHistoryModal();
+      });
+
+      // Event listener for Download
+      card.querySelector(".btn-download-test").addEventListener("click", () => {
+        const link = document.createElement("a");
+        link.download = `yolo_test_${item.timestamp.replace(/[: ]/g, "_")}.jpg`;
+        link.href = item.annotatedSrc || item.originalSrc;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
+
+      historyList.appendChild(card);
+    });
+  }
+
+  function restoreHistoryItem(item) {
+    if (item.originalSrc) {
+      imgOriginal.src = item.originalSrc;
+      imgOriginal.classList.remove("hidden");
+      origPlaceholder.classList.add("hidden");
+    }
+    if (item.annotatedSrc) {
+      annotatedImageB64 = item.annotatedSrc;
+      imgAnnotated.src = item.annotatedSrc;
+      imgAnnotated.classList.remove("hidden");
+      annPlaceholder.classList.add("hidden");
+      btnDownload.classList.remove("hidden");
+    }
+    if (item.conf) {
+      confSlider.value = item.conf;
+      const pct = Math.round(parseFloat(item.conf) * 100);
+      confVal.textContent = `${pct}% (${parseFloat(item.conf).toFixed(2)})`;
+      metricConf.textContent = parseFloat(item.conf).toFixed(2);
+    }
+    metricCount.textContent = item.count;
+    metricTime.textContent = `${item.inferenceMs} ms`;
+    metricDim.textContent = item.dimensions || "-";
+
+    // Render detections table
+    detectionsTbody.innerHTML = "";
+    if (!item.detections || item.detections.length === 0) {
+      const emptyTr = document.createElement("tr");
+      emptyTr.className = "empty-row";
+      emptyTr.innerHTML = `<td colspan="4">No objects detected above threshold.</td>`;
+      detectionsTbody.appendChild(emptyTr);
+    } else {
+      item.detections.forEach((det, idx) => {
+        const tr = document.createElement("tr");
+        const confPct = (det.confidence * 100).toFixed(1);
+        const bboxStr = Array.isArray(det.bbox) ? `[${det.bbox.join(", ")}]` : "-";
+        tr.innerHTML = `
+          <td><strong>#${idx + 1}</strong></td>
+          <td><span class="badge-class">${escapeHtml(det.class_name)}</span></td>
+          <td><span class="badge-conf">${confPct}%</span></td>
+          <td><code class="bbox-coord">${bboxStr}</code></td>
+        `;
+        detectionsTbody.appendChild(tr);
+      });
+    }
+
+    // Smooth scroll down to results section on mobile
+    if (window.innerWidth <= 950) {
+      setTimeout(() => {
+        document.querySelector(".results-section")?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
   }
 
   // Run initial health check on load

@@ -125,10 +125,16 @@
       <section class="card results-section">
         <div class="card-header space-between">
           <h2>2. Visual Detections</h2>
-          <button id="btn-download" class="btn btn-secondary btn-sm hidden" title="Download annotated image">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Download Result
-          </button>
+          <div class="header-action-group">
+            <button id="btn-toggle-history" class="btn btn-secondary btn-sm" title="View previously tested images">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Tested Images (<span id="history-badge">0</span>)
+            </button>
+            <button id="btn-download" class="btn btn-primary btn-sm hidden" title="Download annotated image">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download Result
+            </button>
+          </div>
         </div>
 
         <!-- Metrics Overview Bar -->
@@ -195,6 +201,26 @@
     <footer class="app-footer">
       <p>Pentecost University College • AI Coursework • Ultralytics YOLO Object Detection</p>
     </footer>
+  </div>
+
+  <!-- Tested Images History Modal -->
+  <div id="history-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">Tested Images History</h3>
+          <p class="modal-subtitle">Review, restore, and compare previously analyzed photos</p>
+        </div>
+        <button id="btn-close-history" class="btn-icon" title="Close">&times;</button>
+      </div>
+      <div id="history-list" class="history-grid">
+        <!-- Dynamically populated cards -->
+      </div>
+      <div class="modal-footer">
+        <button id="btn-clear-web-history" class="btn btn-danger btn-sm">Clear History</button>
+        <button id="btn-close-history-footer" class="btn btn-secondary btn-sm">Close</button>
+      </div>
+    </div>
   </div>
 
   <script src="/static/app.js"></script>
