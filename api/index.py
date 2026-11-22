@@ -41,6 +41,18 @@ HUB_API_KEY = os.getenv("HUB_API_KEY", DEFAULT_HUB_KEY)
 USE_HUB_API = os.getenv("USE_HUB_API", "true").lower() in ("true", "1", "yes")
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
+# Reusable HTTP client with persistent connection pool to eliminate TLS handshake latency
+_http_client: Optional[httpx.AsyncClient] = None
+
+def get_http_client() -> httpx.AsyncClient:
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(60.0, connect=10.0),
+            limits=httpx.Limits(max_keepalive_connections=10, max_connections=20, keepalive_expiry=60.0)
+        )
+    return _http_client
+
 API_DIR = Path(__file__).resolve().parent
 STATIC_DIRS = [
     API_DIR / "static",
@@ -91,7 +103,7 @@ def draw_bounding_boxes(image_bytes: bytes, detections: List[Dict[str, Any]]) ->
             draw.text(text_pos, label, fill="#FFFFFF")
 
         buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=90)
+        img.save(buf, format="JPEG", quality=75, optimize=True)
         return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
     except Exception as e:
         logger.error(f"Error drawing annotations: {e}")
@@ -198,22 +210,23 @@ async def predict(
             if pil_img.mode in ("RGBA", "P"):
                 pil_img = pil_img.convert("RGB")
 
-            # Downscale if larger than 1280px to drastically speed up Cloud Run inference & prevent timeouts
-            max_dimension = 1280
+            # Downscale to 800px max to drastically accelerate Cloud Run inference and cut network transmission
+            max_dimension = 800
             if max(pil_img.size) > max_dimension:
                 pil_img.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
-                buf = io.BytesIO()
-                pil_img.save(buf, format="JPEG", quality=85)
-                contents = buf.getvalue()
-                filename = "image.jpg"
-                image_mime = "image/jpeg"
+
+            buf = io.BytesIO()
+            pil_img.save(buf, format="JPEG", quality=80, optimize=True)
+            contents = buf.getvalue()
+            filename = "image.jpg"
+            image_mime = "image/jpeg"
 
             img_width, img_height = pil_img.size
         except Exception as e:
             logger.warning(f"PIL optimization note: {e}")
             img_width, img_height = 0, 0
 
-        # 4. Call Ultralytics Inference API
+        # 4. Call Ultralytics Inference API using persistent connection pool
         headers = {
             "x-api-key": HUB_API_KEY,
             "Authorization": f"Bearer {HUB_API_KEY}"
@@ -222,23 +235,23 @@ async def predict(
         data = {"conf": str(conf_clamped)}
 
         start_time = time.perf_counter()
-        async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=15.0)) as client:
-            try:
-                resp = await client.post(HUB_MODEL_URL, headers=headers, files=files, data=data)
-                resp.raise_for_status()
-                hub_json = resp.json()
-            except httpx.HTTPStatusError as e:
-                logger.error(f"Ultralytics Cloud API error: {e.response.text}")
-                raise HTTPException(
-                    status_code=e.response.status_code,
-                    detail=f"Ultralytics Cloud API error: {e.response.text}"
-                )
-            except Exception as e:
-                logger.error(f"Connection error to Cloud Run: {e}")
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail=f"Failed to communicate with Ultralytics Cloud Run: {str(e)}"
-                )
+        client = get_http_client()
+        try:
+            resp = await client.post(HUB_MODEL_URL, headers=headers, files=files, data=data)
+            resp.raise_for_status()
+            hub_json = resp.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Ultralytics Cloud API error: {e.response.text}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Ultralytics Cloud API error: {e.response.text}"
+            )
+        except Exception as e:
+            logger.error(f"Connection error to Cloud Run: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Failed to communicate with Ultralytics Cloud Run: {str(e)}"
+            )
 
         inference_ms = round((time.perf_counter() - start_time) * 1000, 2)
 

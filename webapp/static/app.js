@@ -186,7 +186,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const tempImg = new Image();
     tempImg.onload = () => {
       try {
-        const maxDim = 1600;
+        const maxDim = 960;
         let w = tempImg.naturalWidth || tempImg.width;
         let h = tempImg.naturalHeight || tempImg.height;
         let scale = 1;
@@ -199,7 +199,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const ctx = canvas.getContext("2d");
         ctx.drawImage(tempImg, 0, 0, canvas.width, canvas.height);
 
-        const jpegDataUrl = canvas.toDataURL("image/jpeg", 0.90);
+        const jpegDataUrl = canvas.toDataURL("image/jpeg", 0.80);
         if (fileThumbImg) fileThumbImg.src = jpegDataUrl;
         imgOriginal.src = jpegDataUrl;
 
@@ -207,7 +207,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (blob) {
             currentFile = blob;
           }
-        }, "image/jpeg", 0.90);
+        }, "image/jpeg", 0.80);
       } catch (err) {
         console.warn("Canvas conversion fallback:", err);
       }
