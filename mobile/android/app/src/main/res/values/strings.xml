@@ -1,0 +1,4 @@
+<resources>
+  <string name="app_name">Isaac YOLO Detection</string>
+  <string name="expo_runtime_version">exposdk:58.0.0</string>
+</resources>
