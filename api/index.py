@@ -33,7 +33,7 @@ app.add_middleware(
 )
 
 # Configuration with user's Ultralytics Cloud Run inference endpoint & API key
-DEFAULT_HUB_URL = "https://predict-6afebbe7c7fd72b1f958076d-dproatj77a-nw.a.run.app/predict"
+DEFAULT_HUB_URL = "https://predict-6b003d4f0162c64931487434-dproatj77a-nw.a.run.app/predict"
 DEFAULT_HUB_KEY = "ul_645afcc6c6c448d7046b58259f0cb16c146db9ad"
 
 HUB_MODEL_URL = os.getenv("HUB_MODEL_URL", DEFAULT_HUB_URL)

@@ -800,7 +800,7 @@ def generate_report():
     add_h1("4. Methodology")
 
     add_h2("4.1 Data Collection Strategy and Dataset Characteristics")
-    add_p("The foundation of any machine learning model resides in the quality, diversity, and integrity of its training corpus. To satisfy the academic requirements of this course—which mandated a minimum dataset of 500 labeled images—a comprehensive data acquisition campaign was conducted. A total of 707 distinct photographic images were collected over several weeks, specifically curated to capture Isaac Nkansah across realistic, unconstrained daily operational contexts.")
+    add_p("The foundation of any machine learning model resides in the quality, diversity, and integrity of its training corpus. To satisfy the academic requirements of this course—which mandated a minimum dataset of 500 labeled images—a comprehensive data acquisition campaign was conducted. An initial validated benchmark corpus of 707 distinct photographic images was curated and annotated, which was subsequently augmented to 810 labeled images (comprising 763 training and 47 validation images) to further expand visual coverage across varied everyday backgrounds, indoor/outdoor lighting conditions, and multi-person social contexts.")
     add_p("To avoid dataset bias and guarantee environmental invariance, photographic sessions were structured across multiple distinct visual dimensions:")
     add_p("1. Solo Portraits: Close-up and medium-range photographs capturing variations in facial expression, head yaw/pitch/roll angles, eye gaze directions, and subtle appearance changes (e.g., slight facial hair variations, prescription eyewear, and diverse clothing styles).")
     add_p("2. Environmental and Illumination Diversity: Photographs were acquired across diverse real-world university settings at Pentecost University, including indoor fluorescent lecture halls, computer laboratories with screen glare, shaded campus corridors, direct outdoor equatorial sunlight, and low-light evening environments.")
@@ -917,7 +917,7 @@ def generate_report():
     add_p("A central tenet of modern software engineering is that a machine learning model is of limited utility if confined to an offline training notebook. To deliver a complete, operational software solution, a decoupled, multi-tiered cloud architecture was designed and implemented, comprising four integrated layers:")
 
     add_h2("6.1 Ultralytics Cloud Run Managed Deployment")
-    add_p("Upon validation of Run 2 (\"v2-707imgs\"), the production weights were deployed directly to a managed Ultralytics Cloud Run serverless inference cluster situated in the London, United Kingdom cloud region. This cloud service exposes an authenticated, high-performance inference endpoint (`predict-6afebbe7c7fd72b1f958076d-dproatj77a-nw.a.run.app/predict`). Protected by custom API authentication keys (`x-api-key`), this managed service handles model loading, GPU/CPU scaling, and deep convolutional inference.")
+    add_p("Upon validation of Run 2 (\"v2-707imgs\"), the production weights were deployed directly to a managed Ultralytics Cloud Run serverless inference cluster situated in the London, United Kingdom cloud region. This cloud service exposes an authenticated, high-performance inference endpoint (`predict-6b003d4f0162c64931487434-dproatj77a-nw.a.run.app/predict`). Protected by custom API authentication keys (`x-api-key`), this managed service handles model loading, GPU/CPU scaling, and deep convolutional inference.")
 
     add_h2("6.2 FastAPI Serverless Gateway on Vercel")
     add_p("Direct client communication with the raw Cloud Run endpoint presents security and networking challenges: mobile devices would expose private API keys, high-resolution mobile photos would overwhelm bandwidth, and network latency would degrade user experience. To resolve these challenges, a production-grade intermediary API gateway was engineered using FastAPI and deployed onto Vercel serverless cloud infrastructure.")
@@ -1262,7 +1262,7 @@ app.add_middleware(
 )
 
 # Configuration: Managed Ultralytics Cloud Run Endpoint & Secure API Key
-DEFAULT_HUB_URL = "https://predict-6afebbe7c7fd72b1f958076d-dproatj77a-nw.a.run.app/predict"
+DEFAULT_HUB_URL = "https://predict-6b003d4f0162c64931487434-dproatj77a-nw.a.run.app/predict"
 DEFAULT_HUB_KEY = "ul_645afcc6c6c448d7046b58259f0cb16c146db9ad"
 HUB_MODEL_URL = os.getenv("HUB_MODEL_URL", DEFAULT_HUB_URL)
 HUB_API_KEY = os.getenv("HUB_API_KEY", DEFAULT_HUB_KEY)
@@ -1396,7 +1396,7 @@ async def predict(
         ["Resource / Component", "Platform / Service", "Location / Access Link", "Description & Usage"],
         ["Source Code Repository", "GitHub", "https://github.com/nkansahisaac436-dotcom/ai-object-detection-ultralytics", "Complete Git repository containing backend, web app, mobile code, and configs."],
         ["Live Web Application", "Vercel Cloud", "https://ai-object-detection-ultralytics.vercel.app", "Production web dashboard with live photo upload, webcam inference, and history."],
-        ["Managed Inference API", "Google Cloud Run", "https://predict-6afebbe7c7fd72b1f958076d-dproatj77a-nw.a.run.app/predict", "Ultralytics managed cloud container running YOLO26n weights in London (UK)."],
+        ["Managed Inference API", "Google Cloud Run", "https://predict-6b003d4f0162c64931487434-dproatj77a-nw.a.run.app/predict", "Ultralytics managed cloud container running YOLO26n weights in London (UK)."],
         ["Mobile App Project", "Expo Cloud (EAS)", "https://expo.dev/accounts/heaven_bound/projects/ai-object-detection-mobile", "Expo EAS project dashboard with published cloud updates on branch 'main'."],
         ["Mobile Standalone APK", "Expo EAS Build", "[TO BE FILLED BY STUDENT - APK DOWNLOAD URL]", "Direct link to downloadable Android APK installation package."],
         ["Primary Dataset Archive", "Google Drive", "[TO BE FILLED BY STUDENT - DRIVE FOLDER LINK]", "Cloud storage folder containing the complete 707 high-resolution image corpus."],
