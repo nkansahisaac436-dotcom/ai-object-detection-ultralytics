@@ -10,3 +10,5 @@ npm-debug.*
 *.key
 *.mobileprovision
 *.orig.*
+
+dns_patch.js
